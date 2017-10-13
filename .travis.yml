@@ -1,0 +1,34 @@
+sudo: false
+language: python
+matrix:
+  include:
+  - python: '3.5'
+    env: TOXENV=py35-django111-checkmigrations
+  - python: '3.5'
+    env: TOXENV=py35-django111-flake
+  - python: '3.5'
+    env: TOXENV=py35-django111-coverage
+  - python: '3.4'
+    env: TOXENV=py34-django110-test
+  - python: '3.5'
+    env: TOXENV=py35-django110-test
+  - python: '3.6'
+    env: TOXENV=py36-django110-test
+  - python: '3.4'
+    env: TOXENV=py34-django111-test
+  - python: '3.5'
+    env: TOXENV=py35-django111-test
+  - python: '3.6'
+    env: TOXENV=py36-django111-test
+install:
+- pip install tox
+script:
+- tox
+deploy:
+  provider: pypi
+  user: skioo
+  password:
+    secure: FImRrpIVBfFfbVubZEOYlPDUEqQYOyk9JwCJgS/LnbhS37LWMO1PGs53dimt7U64CK+GSfJcVkxD8B7zBNHBDz3MvGHDEP+kdW+KX0PURETrlw6ez+6Bq+Gq38TmrZd0VNqf4Eyf3Euth02CmxErFaj+/9mZzxRmeODyYrQaw0qnoctZacGsN4pN0e1qmkZpvaa38IWutnH1CGRv0Yc/AAU7B9frj6HWPMAdxcC7AFf8ZBLcORk8VaybF8x3kQaXf+lOugaJ3XjEc0wRm0nzrmDsapPsz0U0b5OQ+VNVbbF9HRYRPkevoq4yGHsoXBrMpwH8WqnQMSORAru0G3gvP8yhKzGbPhfWvF+6tMvEvDmjy4EnLco53eAeLTYj3LutNQD0iGNUogB+UUGnTmnDH1wDvsJiMINzQnUAra1FwxbTTtONQmvfmxujHq+f3iHJ99FWP+AlCUeNvQlingfDuyYvTrPPn/XQlDDR0ZPJ1cTp9tk+bABnge1KYLKdfDEEkRndbnDXBSIESrpwk5DoBRZlAaOpLgfK2gdb48SRiBKnfE4akykLYVchez/JcvKddViOPsbYpRXf0pQgPkqKNMAlgPiRmGa9ntIRgCUk/03qc6lzknYOstO1N7ynnnQy9ohbpKuf3bxc52dWYRBoVfSv/zETtJPl7gZ1l97HHv4=
+  distribution: sdist bdist_wheel
+  on:
+    tags: true

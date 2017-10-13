@@ -1,0 +1,66 @@
+[
+  {
+    "model": "auth.user",
+    "pk": 111,
+    "fields": {
+      "username": "user111",
+      "password": "password"
+    }
+  },
+  {
+    "model": "auth.user",
+    "pk": 222,
+    "fields": {
+      "username": "user222",
+      "password": "password"
+    }
+  },
+  {
+    "model": "billing.account", "pk": "016e8ed0-8786-4ffc-b5e0-bf2b919c8d2b", "fields": {
+    "created": "2017-10-21T08:49:07.090Z", "owner": 111, "currency": "USD",
+    "status": "OPEN"
+  }
+  }, {
+  "model": "billing.account", "pk": "c8674163-9306-49ee-95ed-17860def82a4", "fields": {
+    "created": "2017-10-21T08:41:43.339Z", "owner": 222, "currency": "CHF",
+    "status": "OPEN"
+  }
+}, {
+  "model": "billing.invoice", "pk": 1, "fields": {
+    "account": "016e8ed0-8786-4ffc-b5e0-bf2b919c8d2b", "created": "2017-10-21T08:49:41.728Z", "status": "PAST_DUE"
+  }
+}, {
+  "model": "billing.invoice", "pk": 2, "fields": {
+    "account": "016e8ed0-8786-4ffc-b5e0-bf2b919c8d2b", "created": "2017-10-21T09:47:14.554Z", "status": "PENDING"
+  }
+}, {
+  "model": "billing.invoice", "pk": 3, "fields": {
+    "account": "c8674163-9306-49ee-95ed-17860def82a4", "created": "2017-10-21T11:20:29.787Z", "status": "PENDING"
+  }
+}, {
+  "model": "billing.charge", "pk": "4b312d25-3567-42d2-acce-e77b3d422479", "fields": {
+    "created": "2017-10-21T08:49:27.746Z", "account": "016e8ed0-8786-4ffc-b5e0-bf2b919c8d2b", "invoice": 1,
+    "amount_currency": "USD", "amount": "15.00", "description": ""
+  }
+}, {
+  "model": "billing.charge", "pk": "d98e1970-e9d9-4916-bfdf-6f59f12dbd88", "fields": {
+    "created": "2017-10-21T11:19:13.504Z", "account": "c8674163-9306-49ee-95ed-17860def82a4", "invoice": null,
+    "amount_currency": "CHF", "amount": "33.00", "description": "33 ist gut"
+  }
+}, {
+  "model": "billing.transaction", "pk": "0d21a825-8133-4203-88d2-3ea01180084b", "fields": {
+    "created": "2017-10-21T09:53:58.661Z", "account": "c8674163-9306-49ee-95ed-17860def82a4", "success": true,
+    "invoice": 3, "amount_currency": "CHF", "amount": "3.00", "payment_method": "bbb", "credit_card_number": "ccccc"
+  }
+}, {
+  "model": "billing.creditcard", "pk": "66a125e6-a710-4ae1-b2fc-0c3f17663e05", "fields": {
+    "created": "2017-10-21T11:26:58.695Z", "account": "c8674163-9306-49ee-95ed-17860def82a4", "type": "vis",
+    "number": "11", "expiry_month": 11, "expiry_year": 12, "expiry_date": "2012-11-30"
+  }
+}, {
+  "model": "billing.creditcard", "pk": "f4eda79e-ba6b-45d5-b0c4-7cd039229bae", "fields": {
+    "created": "2017-10-21T11:35:49.581Z", "account": "016e8ed0-8786-4ffc-b5e0-bf2b919c8d2b", "type": "VIS",
+    "number": "1111", "expiry_month": 1, "expiry_year": 18, "expiry_date": "2018-01-31"
+  }
+}
+]
