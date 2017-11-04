@@ -1,5 +1,5 @@
 """
-Adapted from django-hordak
+Adapted from django-hordak.
 
 
 ``Total`` **instances (see below for more details)**:
@@ -9,7 +9,7 @@ Adapted from django-hordak
     A `Total`_ may contain one or more ``Money`` objects. There will be precisely one ``Money`` object
     for each currency which the account holds.
 
-    Total objects may be added, subtracted etc. This will produce a new `Total`_ object containing a
+    `Total`_ objects may be added, subtracted etc. This will produce a new `Total`_ object containing a
     union of all the currencies involved in the calculation, even where the result was zero.
 
 """
@@ -123,7 +123,7 @@ class Total(object):
         return [copy.copy(m) for m in self._money_obs if m.amount != 0]
 
     def currencies(self):
-        """Get all currencies with non-zero values"""
+        """Get all currencies, including those with zero values"""
         return [m.currency.code for m in self.monies() if m.amount]
 
 

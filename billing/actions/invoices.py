@@ -1,7 +1,7 @@
 from django.db import transaction
 from django_fsm import can_proceed
 from structlog import get_logger
-from typing import Union
+from typing import Optional
 
 from .. import psp
 from ..models import Invoice, Transaction
@@ -9,24 +9,19 @@ from ..models import Invoice, Transaction
 logger = get_logger()
 
 
-class PaymentError(Exception):
+class PreconditionError(Exception):
     pass
 
 
-class PreconditionError(PaymentError):
-    pass
-
-
-def pay(invoice_id) -> Union[Transaction, None]:
+def pay(invoice_id) -> Optional[Transaction]:
     """
     Get payed for the invoice, using credit cards on record for the account.
 
     If successful attaches the payment to the invoice and mark the invoice as payed.
 
     :param invoice_id: the id of the invoice to pay.
-    :return: either None or a successful transaction
+    :return: A transaction (either successful or not), or None
 
-    XXX: Better logging of complex objects
     """
     logger.debug('invoice-payment-started', invoice_id=invoice_id)
     # Lock to avoid mutations while paying, and multiple payments of the same invoice
@@ -45,7 +40,7 @@ def pay(invoice_id) -> Union[Transaction, None]:
         if not valid_credit_cards:
             raise PreconditionError('No valid credit card on account.')
 
-        # The invoice needs a positive total, in a single currency (for now)
+        # The invoice needs a positive total, in a single currency
         total = invoice.total().monies()
         if len(total) == 0:
             raise PreconditionError('Cannot pay empty invoice.')
@@ -76,6 +71,7 @@ def pay(invoice_id) -> Union[Transaction, None]:
                     return payment
                 else:
                     logger.info('invoice-payment-failure', invoice=invoice_id, payment=payment)
+                    return payment
             except Exception as e:
                 logger.error('invoice-payment-error', invoice_id=invoice_id, credit_card=credit_card, exc_info=e)
         return None

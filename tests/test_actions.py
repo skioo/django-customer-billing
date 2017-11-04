@@ -3,10 +3,62 @@ from django.test import TestCase
 from moneyed import Money
 from pytest import raises
 
-from billing.actions import invoices
+from billing.actions import accounts, invoices
 from billing.models import Account, Charge, CreditCard, Invoice
 from billing.psp import register, unregister
-from .psp import MyPSP
+from billing.total import Total
+from .my_psp import MyPSP
+
+
+class AccountActionsTest(TestCase):
+    def setUp(self):
+        user = User.objects.create_user('a-username')
+        self.account = Account.objects.create(owner=user, currency='CHF')
+
+    def test_it_should_not_create_invoice_when_money_is_owed_to_the_user(self):
+        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), description='a charge')
+        Charge.objects.create(account=self.account, amount=Money(-30, 'CHF'), description='a credit')
+        assert not accounts.create_invoice_if_pending_charges(account_id=self.account.pk)
+
+    def test_it_should_not_create_an_invoice_when_no_money_is_due(self):
+        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), description='a charge')
+        Charge.objects.create(account=self.account, amount=Money(-10, 'CHF'), description='a credit')
+        assert not accounts.create_invoice_if_pending_charges(account_id=self.account.pk)
+
+    def test_it_should_create_an_invoice_when_money_is_due(self):
+        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), description='a charge')
+        Charge.objects.create(account=self.account, amount=Money(-3, 'CHF'), description='a credit')
+        invoices = accounts.create_invoice_if_pending_charges(account_id=self.account.pk)
+        assert len(invoices) == 1
+        invoice = invoices[0]
+        assert invoice.total() == Total(7, 'CHF')
+        assert invoice.items.count() == 2
+
+        # Verify there is nothing left to invoice on this account
+        assert not accounts.create_invoice_if_pending_charges(account_id=self.account.pk)
+
+    def test_it_should_handle_multicurrency_univoiced_charges(self):
+        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), description='a 10 CHF charge')
+        Charge.objects.create(account=self.account, amount=Money(30, 'EUR'), description='a 30 EURO charge')
+        invoices = accounts.create_invoice_if_pending_charges(account_id=self.account.pk)
+        assert len(invoices) == 2
+
+        # For some reason the output is always sorted. This makes asserting easy
+        invoice1 = invoices[0]
+        items1 = invoice1.items.all()
+        assert len(items1) == 1
+        assert items1[0].description == 'a 10 CHF charge'
+        assert invoice1.items.count() == 1
+        assert invoice1.total().currencies() == ['CHF']
+
+        invoice2 = invoices[1]
+        items2 = invoice2.items.all()
+        assert len(items2) == 1
+        assert items2[0].description == 'a 30 EURO charge'
+        assert invoice2.total().currencies() == ['EUR']
+
+        # Verify there is nothing left to invoice on this account
+        assert not accounts.create_invoice_if_pending_charges(account_id=self.account.pk)
 
 
 class InvoicesActionsTest(TestCase):

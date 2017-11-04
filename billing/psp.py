@@ -1,11 +1,18 @@
 from django.core.validators import RegexValidator
 from moneyed import Money
+from structlog import get_logger
 
 from typing import Tuple
+
+logger = get_logger()
 
 
 #############################################
 # The Client API
+
+class PreconditionError(Exception):
+    pass
+
 
 def charge_credit_card(credit_card_psp_uri: str, amount: Money, client_ref: str) -> Tuple[bool, str]:
     """
@@ -14,6 +21,9 @@ def charge_credit_card(credit_card_psp_uri: str, amount: Money, client_ref: str)
     :param client_ref: a reference that will appear on the customer's credit card report
     :return: a tuple (success, payment_psp_uri)
     """
+    logger.debug('charge-credit-card', credit_card_psp_uri=credit_card_psp_uri, amount=amount, client_ref=client_ref)
+    if amount.amount <= 0:
+        raise PreconditionError('Can only charge positive amounts')
     scheme, credit_card_psp_path = _parse_uri(credit_card_psp_uri)
     success, payment_psp_path = psp_for_scheme(scheme).charge_credit_card(credit_card_psp_path, amount, client_ref)
     return success, _unparse_uri(scheme, payment_psp_path)
@@ -26,6 +36,9 @@ def refund_payment(payment_psp_uri: str, amount: Money, client_ref: str) -> Tupl
     :param client_ref: a reference that will appear on the customer's credit card statement
     :return: a tuple (success, refund_psp_uri)
     """
+    logger.debug('refund-payment', payment_psp_uri=payment_psp_uri, amount=amount, client_ref=client_ref)
+    if amount.amount <= 0:
+        raise PreconditionError('Can only refund positive amounts')
     scheme, payment_psp_path = _parse_uri(payment_psp_uri)
     success, refund_psp_path = psp_for_scheme(scheme).refund_payment(payment_psp_path, amount, client_ref)
     return success, _unparse_uri(scheme, refund_psp_path)

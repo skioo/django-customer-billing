@@ -83,3 +83,32 @@ class AccountTest(TestCase):
         Charge.objects.create(account=account, amount=Money(-3, 'EUR'), description='a credit')
         with self.assertNumQueries(2):
             assert account.balance() == Total(-10, 'CHF', 3, 'EUR')
+
+
+class ChargeTest(TestCase):
+    def setUp(self):
+        user = User.objects.create_user('a-username')
+        self.account = Account.objects.create(owner=user, currency='CHF')
+
+    def test_uninvoiced_charges_should_ignore_invoiced_charges(self):
+        Charge.objects.create(account=self.account, invoice_id=1, amount=Money(10, 'CHF'), description='a charge')
+        with self.assertNumQueries(2):
+            uc, total = Charge.objects.uninvoiced_with_total(account_id=self.account.pk)
+            assert uc == []
+            assert total == Total()
+
+    def test_uninvoiced_charges_should_consider_credits(self):
+        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), description='a charge')
+        Charge.objects.create(account=self.account, amount=Money(-30, 'CHF'), description='a credit')
+        with self.assertNumQueries(2):
+            uc, total = Charge.objects.uninvoiced_with_total(account_id=self.account.pk)
+            assert len(uc) == 2
+            assert total == Total(-20, 'CHF')
+
+    def test_uninvoiced_charges_can_be_in_multiple_currencies(self):
+        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), description='a charge')
+        Charge.objects.create(account=self.account, amount=Money(-30, 'EUR'), description='a credit')
+        with self.assertNumQueries(2):
+            uc, total = Charge.objects.uninvoiced_with_total(account_id=self.account.pk)
+            assert len(uc) == 2
+            assert total == Total(10, 'CHF', -30, 'EUR')

@@ -5,24 +5,32 @@ import uuid
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.db.models import Model, PROTECT, Sum
+from django.db.models import Model, PROTECT, QuerySet, Sum
 from django.utils.translation import ugettext_lazy as _
 from django_fsm import FSMField, transition
 from djmoney.models.fields import CurrencyField, MoneyField
 from moneyed import Money
+from typing import List, Tuple
 
 from .psp import psp_uri_validator
 from .total import Total
 
 
+def total_amount(qs) -> Total:
+    """Sums the amounts of the objects in the queryset, keeping each currency separate.
+    :param qs: A querystring containing objects that have an amount field of type Money.
+    :return: A Total object.
+    """
+    aggregate = qs.values('amount_currency').annotate(sum=Sum('amount'))
+    return Total(Money(amount=r['sum'], currency=r['amount_currency']) for r in aggregate)
+
+
+########################################################################################################
+
+
 class OnlyOpenAccountsManager(models.Manager):
     def get_queryset(self):
         return super().get_queryset().filter(status=Account.OPEN)
-
-
-def total_amount(qs):
-    aggregate = qs.values('amount_currency').annotate(sum=Sum('amount'))
-    return Total(Money(amount=r['sum'], currency=r['amount_currency']) for r in aggregate)
 
 
 class Account(Model):
@@ -64,6 +72,9 @@ class Account(Model):
         return str(self.owner)
 
 
+########################################################################################################
+
+
 class Invoice(Model):
     PENDING = 'PENDING'
     PAST_DUE = 'PAST_DUE'
@@ -98,6 +109,18 @@ class Invoice(Model):
         return '#{}'.format(self.id)
 
 
+########################################################################################################
+
+
+class ChargeManager(models.Manager):
+    def uninvoiced_with_total(self, account_id: str) -> Tuple[List, Total]:
+        uc = Charge.objects.filter(invoice=None, account_id=account_id)
+        return list(uc), total_amount(uc)
+
+    def uninvoiced_in_currency(self, account_id: str, currency: str) -> QuerySet:
+        return Charge.objects.filter(invoice=None, account_id=account_id, amount_currency=currency)
+
+
 class Charge(Model):
     """
     A charge has a signed amount. If the amount is negative then the charge is in fact a credit.
@@ -108,6 +131,8 @@ class Charge(Model):
     invoice = models.ForeignKey(Invoice, null=True, blank=True, related_name='items', on_delete=PROTECT)
     amount = MoneyField(max_digits=12, decimal_places=2)
     description = models.TextField(blank=True)
+
+    objects = ChargeManager()
 
     @property
     def type(self):

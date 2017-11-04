@@ -7,6 +7,8 @@ matrix:
   - python: '3.5'
     env: TOXENV=py35-django111-flake
   - python: '3.5'
+    env: TOXENV=py35-django111-mypy
+  - python: '3.5'
     env: TOXENV=py35-django111-coverage
   - python: '3.4'
     env: TOXENV=py34-django110-test

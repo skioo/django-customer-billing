@@ -8,7 +8,7 @@ from django.utils.html import format_html
 from django.utils.translation import ugettext_lazy as _
 from moneyed.localization import format_money
 
-from .actions import invoices
+from .actions import accounts, invoices
 from .models import Account, Charge, CreditCard, Invoice, Transaction
 from .psp import admin_url
 
@@ -207,10 +207,10 @@ class TransactionInline(admin.TabularInline):
 def pay_invoice_button(invoice):
     return format_html('<a href="{}">{}</a>',
                        reverse('admin:billing-pay-invoice', args=[invoice.pk]),
-                       _('Pay'))
+                       _('Pay Now'))
 
 
-pay_invoice_button.short_description = _('Pay')  # type: ignore
+pay_invoice_button.short_description = _('Pay Invoice')  # type: ignore
 
 
 def do_pay_invoice(request, invoice_id):
@@ -228,14 +228,14 @@ invoice_number.short_description = 'Invoice'  # type: ignore
 @admin.register(Invoice)
 class InvoiceAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
-    list_display = [invoice_number, 'account', created_on, 'status', 'total', pay_invoice_button]
+    list_display = [invoice_number, 'account', created_on, 'status', 'total']
     list_filter = ['status']
     search_fields = ['id', 'account__owner__email', 'account__owner__first_name', 'account__owner__last_name']
     ordering = ['-created']
     list_select_related = True
 
     raw_id_fields = ['account']
-    readonly_fields = ['created', 'total']
+    readonly_fields = ['created', 'total', pay_invoice_button]
     inlines = [ChargeInline, TransactionInline]
 
     def get_urls(self):
@@ -283,6 +283,21 @@ def punctual(self):
 punctual.boolean = True  # type: ignore
 
 
+def create_invoice_button(obj):
+    return format_html(
+        '<a class="button" href="{}">Create Invoice Now</a>',
+        reverse('admin:billing-create-invoice', args=[obj.pk]),
+    )
+
+
+create_invoice_button.short_description = _('Create Invoice')  # type: ignore
+
+
+def do_create_invoice(request, account_id):
+    accounts.create_invoice_if_pending_charges(account_id=account_id)
+    return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+
 @admin.register(Account)
 class AccountAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
@@ -292,6 +307,18 @@ class AccountAdmin(AppendOnlyModelAdmin):
     list_select_related = True
 
     raw_id_fields = ['owner']
-    readonly_fields = ['balance', 'created']
+    readonly_fields = ['balance', 'created', create_invoice_button]
 
     inlines = [CreditCardInline, ChargeInline, InvoiceInline, TransactionInline]
+
+    def get_urls(self):
+        urls = super().get_urls()
+        my_urls = [
+            url(
+                r'^(?P<account_id>[0-9a-f-]+)/create_invoice/$',
+                self.admin_site.admin_view(do_create_invoice),
+                name='billing-create-invoice'
+            )
+        ]
+
+        return my_urls + urls
