@@ -69,7 +69,7 @@ class PSP:
     def admin_url(self, object_psp_path: str) -> str:
         """
         :param object_psp_path: a string representing the object in the psp
-        :return:  an url to the admin detail page of the object
+        :return: an url to the admin detail page of the object
         """
 
     def charge_credit_card(self, credit_card_psp_path: str, amount: Money, client_ref: str) -> Tuple[bool, str]:

@@ -7,10 +7,17 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.translation import ugettext_lazy as _
 from moneyed.localization import format_money
+from structlog import get_logger
 
 from .actions import accounts, invoices
 from .models import Account, Charge, CreditCard, Invoice, Transaction
 from .psp import admin_url
+
+logger = get_logger()
+
+
+##############################################################
+# Shared utilities
 
 
 class AppendOnlyModelAdmin(admin.ModelAdmin):
@@ -52,8 +59,6 @@ class ReadOnlyModelAdmin(AppendOnlyModelAdmin):
 account_owner_search_fields = ['account__owner__email', 'account__owner__first_name', 'account__owner__last_name']
 
 
-##############################################################
-
 def amount(obj):
     return format_money(obj.amount)
 
@@ -62,7 +67,18 @@ def created_on(obj):
     return obj.created.date()
 
 
+def psp_admin_link(obj):
+    psp_uri = obj.psp_uri
+    try:
+        url = admin_url(psp_uri)
+        return format_html('<a href="{}">{}</a>', url, psp_uri)
+    except Exception as e:
+        logger.info('admin-link-error', exc_info=e)
+        return psp_uri
+
+
 ##############################################################
+# Credit Cards
 
 class CreditCardExpiredFilter(admin.SimpleListFilter):
     title = _('Expired')
@@ -87,18 +103,10 @@ def expiry(obj):
     return format_html('{}/{}', obj.expiry_month, obj.expiry_year)
 
 
-def credit_card_psp_admin_link(cc):
-    try:
-        url = admin_url(cc.psp_uri)
-        return format_html('<a href="{}">{}</a>', url, cc.psp_uri)
-    except Exception:
-        return cc.psp_uri
-
-
 @admin.register(CreditCard)
 class CreditCardAdmin(ReadOnlyModelAdmin):
     date_hierarchy = 'created'
-    list_display = ['account', created_on, 'type', 'number', expiry, credit_card_psp_admin_link]
+    list_display = ['account', created_on, 'type', 'number', expiry, psp_admin_link]
     search_fields = ['number'] + account_owner_search_fields
     list_filter = ['type', CreditCardExpiredFilter]
     ordering = ['-created']
@@ -110,8 +118,7 @@ class CreditCardAdmin(ReadOnlyModelAdmin):
 
 class CreditCardInline(admin.TabularInline):
     model = CreditCard
-    readonly_fields = ['type', 'number', expiry, created_on, credit_card_psp_admin_link]
-    exclude = ['expiry_month', 'expiry_year', 'expiry_date']
+    fields = readonly_fields = ['type', 'number', expiry, created_on, psp_admin_link]
     show_change_link = True
     can_delete = False
     extra = 0
@@ -119,6 +126,7 @@ class CreditCardInline(admin.TabularInline):
 
 
 ##############################################################
+# Invoices
 
 def charge_invoice(charge):
     i = charge.invoice
@@ -164,7 +172,7 @@ class ChargeInline(admin.TabularInline):
 
 
 #############################################################
-
+# Transactions
 
 def transaction_invoice(transaction):
     i = transaction.invoice
@@ -182,7 +190,7 @@ class TransactionAdmin(ReadOnlyModelAdmin):
     verbose_name_plural = 'Transactions'
     date_hierarchy = 'created'
     list_display = ['type', 'account', 'payment_method', 'credit_card_number', created_on, 'success',
-                    transaction_invoice, amount]
+                    transaction_invoice, amount, psp_admin_link]
     list_display_links = ['type']
     search_fields = ['credit_card_number', 'amount'] + account_owner_search_fields
     list_filter = ['payment_method', 'success', 'amount_currency']
@@ -195,7 +203,8 @@ class TransactionAdmin(ReadOnlyModelAdmin):
 
 class TransactionInline(admin.TabularInline):
     model = Transaction
-    fields = readonly_fields = ['type', 'payment_method', 'credit_card_number', created_on, 'success', amount]
+    fields = readonly_fields = ['type', 'payment_method', 'credit_card_number', created_on, 'success', amount,
+                                psp_admin_link]
     show_change_link = True
     can_delete = False
     extra = 0
@@ -203,6 +212,7 @@ class TransactionInline(admin.TabularInline):
 
 
 ##############################################################
+# Invoices
 
 def pay_invoice_button(invoice):
     return format_html('<a href="{}">{}</a>',
@@ -257,6 +267,7 @@ class InvoiceInline(admin.TabularInline):
 
 
 ##############################################################
+# Accounts
 
 class AccountRatingFilter(admin.SimpleListFilter):
     title = _('Rating')
