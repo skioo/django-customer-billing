@@ -30,7 +30,13 @@ class AppendOnlyModelAdmin(admin.ModelAdmin):
         if request.user.is_superuser:
             return super().get_readonly_fields(request, obj)
 
-        return self.fields or [f.name for f in self.model._meta.fields]
+        # We cannot call super().get_fields(request, obj) because that method calls
+        # get_readonly_fields(request, obj), causing infinite recursion. Ditto for
+        # super().get_form(request, obj). So we  assume the default ModelForm.
+
+        f = self.fields or [f.name for f in self.model._meta.fields]
+        f.extend(super().get_readonly_fields(request, obj))
+        return f
 
     def has_change_permission(self, request, obj=None):
         # Allow viewing objects but not actually changing them (unless superuser)
