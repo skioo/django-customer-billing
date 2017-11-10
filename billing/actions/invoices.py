@@ -52,8 +52,8 @@ def pay(invoice_id) -> Optional[Transaction]:
 
         for credit_card in valid_credit_cards:
             try:
-                success, payment_psp_uri = psp.charge_credit_card(
-                    credit_card_psp_uri=credit_card.psp_uri,
+                success, payment_psp_object = psp.charge_credit_card(
+                    credit_card_psp_object=credit_card.psp_object,
                     amount=amount,
                     client_ref=str(invoice_id))
                 payment = Transaction.objects.create(
@@ -63,7 +63,7 @@ def pay(invoice_id) -> Optional[Transaction]:
                     success=success,
                     payment_method=credit_card.type,
                     credit_card_number=credit_card.number,
-                    psp_uri=payment_psp_uri)
+                    psp_object=payment_psp_object)
                 if success:
                     invoice.pay()
                     invoice.save()

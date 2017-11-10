@@ -11,7 +11,6 @@ from structlog import get_logger
 
 from .actions import accounts, invoices
 from .models import Account, Charge, CreditCard, Invoice, Transaction
-from .psp import admin_url
 
 logger = get_logger()
 
@@ -74,13 +73,16 @@ def created_on(obj):
 
 
 def psp_admin_link(obj):
-    psp_uri = obj.psp_uri
-    try:
-        url = admin_url(psp_uri)
-        return format_html('<a href="{}">{}</a>', url, psp_uri)
-    except Exception as e:
-        logger.info('admin-link-error', exc_info=e)
-        return psp_uri
+    text = '{}: {}'.format(obj.psp_content_type.name, obj.psp_object_id)
+    url = reverse(
+        'admin:{}_{}_change'.format(
+            obj.psp_content_type.app_label,
+            obj.psp_content_type.model),
+        args=[obj.psp_object_id])
+    return format_html('<a href="{}">{}</a>', url, text)
+
+
+psp_admin_link.short_description = 'PSP Object'  # type: ignore
 
 
 ##############################################################

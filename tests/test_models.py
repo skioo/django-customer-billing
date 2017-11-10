@@ -7,6 +7,7 @@ from moneyed import Money
 
 from billing.models import Account, Charge, CreditCard, Invoice, Transaction
 from billing.total import Total
+from .models import MyPSPCreditCard, MyPSPPayment
 
 
 class InvoiceTest(TestCase):
@@ -33,13 +34,14 @@ class InvoiceTest(TestCase):
 
 class CreditCardTest(TestCase):
     def test_expiry(self):
+        psp_credit_card = MyPSPCreditCard.objects.create(token='atoken')
         credit_card = CreditCard.objects.create(
             account_id='11111111-1111-1111-1111-111111111111',
             type='VIS',
             number='1111',
             expiry_month=12,
             expiry_year=88,
-            psp_uri='test:creditcardtoken/12345')
+            psp_object=psp_credit_card)
         assert credit_card.expiry_date == date(2088, 12, 31)
         assert not credit_card.is_expired()
         assert credit_card.is_expired(as_of=date(2089, 1, 1))
@@ -53,18 +55,20 @@ class AccountTest(TestCase):
         account = Account.objects.create(owner=self.user, currency='CHF')
         Charge.objects.create(account=account, amount=Money(10, 'CHF'), description='a charge')
         Charge.objects.create(account=account, amount=Money(-3, 'CHF'), description='a credit')
+        psp_payment = MyPSPPayment(payment_ref='apaymentref')
         Transaction.objects.create(account=account, amount=Money(6, 'CHF'), success=True,
                                    payment_method='VIS', credit_card_number='4111 1111 1111 1111',
-                                   psp_uri='test:payment/12345')
+                                   psp_object=psp_payment)
         with self.assertNumQueries(2):
             assert account.balance() == Total(-1, 'CHF')
 
     def test_unsuccessful_transactions_should_not_impact_the_balance(self):
         account = Account.objects.create(owner=self.user, currency='CHF')
         Charge.objects.create(account=account, amount=Money(10, 'CHF'), description='a charge')
+        psp_payment = MyPSPPayment(payment_ref='apaymentref')
         Transaction.objects.create(account=account, amount=Money(6, 'CHF'), success=False,
                                    payment_method='VIS', credit_card_number='4111 1111 1111 1111',
-                                   psp_uri='test:payment/12345')
+                                   psp_object=psp_payment)
         with self.assertNumQueries(2):
             assert account.balance() == Total(-10, 'CHF')
 

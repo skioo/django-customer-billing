@@ -10,13 +10,13 @@ from .total import TotalSerializer
 class CreditCardSerializer(serializers.ModelSerializer):
     class Meta:
         model = CreditCard
-        exclude = ['account', 'expiry_date', 'psp_uri']
+        exclude = ['account', 'expiry_date', 'psp_content_type', 'psp_object_id']
 
 
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
-        exclude = ['account', 'psp_uri']
+        exclude = ['account', 'psp_content_type', 'psp_object_id']
 
 
 class ChargeSerializer(serializers.ModelSerializer):

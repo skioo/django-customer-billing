@@ -7,6 +7,7 @@ from billing.actions import accounts, invoices
 from billing.models import Account, Charge, CreditCard, Invoice
 from billing.psp import register, unregister
 from billing.total import Total
+from .models import MyPSPCreditCard
 from .my_psp import MyPSP
 
 
@@ -63,17 +64,18 @@ class AccountActionsTest(TestCase):
 
 class InvoicesActionsTest(TestCase):
     def setUp(self):
-        register('test', MyPSP())
+        register(MyPSP())
 
     def tearDown(self):
-        unregister('test')
+        unregister(MyPSP())
 
     def test_it_should_prevent_paying_an_empty_invoice(self):
         user = User.objects.create_user('a-username')
         account = Account.objects.create(owner=user, currency='CHF')
+        psp_credit_card = MyPSPCreditCard.objects.create(token='atoken')
         CreditCard.objects.create(account=account, type='VIS',
                                   number='1111', expiry_month=12, expiry_year=18,
-                                  psp_uri='test:token/12345')
+                                  psp_object=psp_credit_card)
         invoice = Invoice.objects.create(account=account)
 
         with raises(invoices.PreconditionError, match='Cannot pay empty invoice.'):
@@ -82,9 +84,10 @@ class InvoicesActionsTest(TestCase):
     def test_it_should_pay_when_all_is_right(self):
         user = User.objects.create_user('a-username')
         account = Account.objects.create(owner=user, currency='CHF')
+        psp_credit_card = MyPSPCreditCard.objects.create(token='atoken')
         CreditCard.objects.create(account=account, type='VIS',
                                   number='1111', expiry_month=12, expiry_year=18,
-                                  psp_uri='test:token/12345')
+                                  psp_object=psp_credit_card)
         invoice = Invoice.objects.create(account=account)
         Charge.objects.create(account=account, invoice=invoice, amount=Money(10, 'CHF'), description='a charge')
 

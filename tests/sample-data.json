@@ -50,17 +50,20 @@
 }, {
   "model": "billing.transaction", "pk": "0d21a825-8133-4203-88d2-3ea01180084b", "fields": {
     "created": "2017-10-21T09:53:58.661Z", "account": "c8674163-9306-49ee-95ed-17860def82a4", "success": true,
-    "invoice": 3, "amount_currency": "CHF", "amount": "3.00", "payment_method": "bbb", "credit_card_number": "ccccc"
+    "invoice": 3, "amount_currency": "CHF", "amount": "3.00", "payment_method": "bbb", "credit_card_number": "ccccc",
+    "psp_content_type_id": 1, "psp_object_id": "00000000-0000-0000-0000-000000000000"
   }
 }, {
   "model": "billing.creditcard", "pk": "66a125e6-a710-4ae1-b2fc-0c3f17663e05", "fields": {
     "created": "2017-10-21T11:26:58.695Z", "account": "c8674163-9306-49ee-95ed-17860def82a4", "type": "vis",
-    "number": "11", "expiry_month": 11, "expiry_year": 12, "expiry_date": "2012-11-30"
+    "number": "11", "expiry_month": 11, "expiry_year": 12, "expiry_date": "2012-11-30",
+    "psp_content_type_id": 1, "psp_object_id": "00000000-0000-0000-0000-000000000000"
   }
 }, {
   "model": "billing.creditcard", "pk": "f4eda79e-ba6b-45d5-b0c4-7cd039229bae", "fields": {
     "created": "2017-10-21T11:35:49.581Z", "account": "016e8ed0-8786-4ffc-b5e0-bf2b919c8d2b", "type": "VIS",
-    "number": "1111", "expiry_month": 1, "expiry_year": 18, "expiry_date": "2018-01-31"
+    "number": "1111", "expiry_month": 1, "expiry_year": 18, "expiry_date": "2018-01-31",
+    "psp_content_type_id": 1, "psp_object_id": "00000000-0000-0000-0000-000000000000"
   }
 }
 ]

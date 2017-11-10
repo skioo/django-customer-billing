@@ -3,6 +3,8 @@ from datetime import date, datetime
 import uuid
 
 from django.conf import settings
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Model, PROTECT, QuerySet, Sum
@@ -12,7 +14,6 @@ from djmoney.models.fields import CurrencyField, MoneyField
 from moneyed import Money
 from typing import List, Tuple
 
-from .psp import psp_uri_validator
 from .total import Total
 
 
@@ -169,7 +170,9 @@ class Transaction(Model):
     payment_method = models.CharField(db_index=True, max_length=3)
     credit_card_number = models.CharField(max_length=255, blank=True)
 
-    psp_uri = models.CharField(max_length=255, validators=[psp_uri_validator])
+    psp_content_type = models.ForeignKey(ContentType)
+    psp_object_id = models.UUIDField(db_index=True)
+    psp_object = GenericForeignKey('psp_content_type', 'psp_object_id')
 
     objects = models.Manager()
     successful = OnlySuccessfulTransactionsManager()
@@ -205,7 +208,9 @@ class CreditCard(Model):
     expiry_year = models.IntegerField(validators=[MinValueValidator(0), MaxValueValidator(99)])
     expiry_date = models.DateField()  # A field in the database so we can search for expired cards
 
-    psp_uri = models.CharField(max_length=255, validators=[psp_uri_validator])
+    psp_content_type = models.ForeignKey(ContentType)
+    psp_object_id = models.UUIDField(db_index=True)
+    psp_object = GenericForeignKey('psp_content_type', 'psp_object_id')
 
     def is_expired(self, as_of: date = None):
         if as_of is None:
