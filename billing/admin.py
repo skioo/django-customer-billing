@@ -68,8 +68,14 @@ def amount(obj):
     return format_money(obj.amount)
 
 
+amount.admin_order_field = 'amount'  # type: ignore
+
+
 def created_on(obj):
     return obj.created.date()
+
+
+created_on.admin_order_field = 'created'  # type: ignore
 
 
 def psp_admin_link(obj):
@@ -107,14 +113,17 @@ class CreditCardExpiredFilter(admin.SimpleListFilter):
             return queryset.filter(expiry_date__gte=today)
 
 
-def expiry(obj):
+def credit_card_expiry(obj):
     return format_html('{}/{}', obj.expiry_month, obj.expiry_year)
+
+
+credit_card_expiry.admin_order_field = 'expiry_date'  # type: ignore
 
 
 @admin.register(CreditCard)
 class CreditCardAdmin(ReadOnlyModelAdmin):
     date_hierarchy = 'created'
-    list_display = ['account', created_on, 'type', 'number', expiry, psp_admin_link]
+    list_display = ['account', created_on, 'type', 'number', credit_card_expiry, psp_admin_link]
     search_fields = ['number'] + account_owner_search_fields
     list_filter = ['type', CreditCardExpiredFilter]
     ordering = ['-created']
@@ -126,7 +135,7 @@ class CreditCardAdmin(ReadOnlyModelAdmin):
 
 class CreditCardInline(admin.TabularInline):
     model = CreditCard
-    fields = readonly_fields = ['type', 'number', expiry, created_on, psp_admin_link]
+    fields = readonly_fields = ['type', 'number', credit_card_expiry, created_on, psp_admin_link]
     show_change_link = True
     can_delete = False
     extra = 0
@@ -134,7 +143,7 @@ class CreditCardInline(admin.TabularInline):
 
 
 ##############################################################
-# Invoices
+# Charges
 
 def charge_invoice(charge):
     i = charge.invoice
@@ -147,6 +156,8 @@ def charge_invoice(charge):
 
 
 charge_invoice.short_description = 'Invoice'  # type: ignore
+
+charge_invoice.admin_order_field = 'invoice'  # type: ignore
 
 
 @admin.register(Charge)
@@ -191,6 +202,8 @@ def transaction_invoice(transaction):
 
 
 transaction_invoice.short_description = 'Invoice'  # type: ignore
+
+transaction_invoice.admin_order_field = 'invoice'  # type: ignore
 
 
 @admin.register(Transaction)
@@ -241,6 +254,8 @@ def invoice_number(invoice):
 
 
 invoice_number.short_description = 'Invoice'  # type: ignore
+
+invoice_number.admin_order_field = 'pk'  # type: ignore
 
 
 @admin.register(Invoice)
