@@ -15,16 +15,14 @@ class PreconditionError(Exception):
 
 def pay(invoice_id) -> Optional[Transaction]:
     """
-    Get payed for the invoice, using credit cards on record for the account.
+    Get payed for the invoice, trying the valid credit cards on record for the account.
 
-    If successful attaches the payment to the invoice and mark the invoice as payed.
+    If successful attaches the payment to the invoice and marks the invoice as payed.
 
     :param invoice_id: the id of the invoice to pay.
-    :return: A transaction (either successful or not), or None
-
+    :return: A transaction (either successful or not), or None if the money could not be taken.
     """
     logger.debug('invoice-payment-started', invoice_id=invoice_id)
-    # Lock to avoid mutations while paying, and multiple payments of the same invoice
     with transaction.atomic():
         invoice = Invoice.objects.select_for_update().get(pk=invoice_id)
 
