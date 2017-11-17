@@ -13,62 +13,52 @@ class AccountViewTest(TestCase):
         client = APIClient()
         client.force_authenticate(user111)
 
-        with self.assertNumQueries(9):  # XXX: this is a lot
+        with self.assertNumQueries(9):
             response = client.get(reverse('billing_account'))
         assert response.status_code == HTTP_200_OK
         assert response.json() == {
-            "id": "016e8ed0-8786-4ffc-b5e0-bf2b919c8d2b",
-            "balance": [
+            'id': '016e8ed0-8786-4ffc-b5e0-bf2b919c8d2b',
+            'created': '2017-10-21T03:49:07.090000-05:00',
+            'modified': '2017-10-22T17:22:22.090000-05:00',
+            'currency': 'USD',
+            'credit_cards': [
+                {'id': 'f4eda79e-ba6b-45d5-b0c4-7cd039229bae',
+                 'created': '2017-10-21T06:35:49.581000-05:00',
+                 'modified': '2017-10-22T17:22:22.090000-05:00',
+                 'expiry_year': 18,
+                 'expiry_month': 1,
+                 'number': '1111',
+                 'type': 'VIS'
+                 }
+            ], 'transactions': [
+            ], 'charges': [
                 {
-                    "amount_currency": "USD",
-                    "amount": "-15.00"
-                }
+                    'id': '4b312d25-3567-42d2-acce-e77b3d422479',
+                    'created': '2017-10-21T03:49:27.746000-05:00',
+                    'modified': '2017-10-22T17:22:22.090000-05:00',
+                    'invoice': 1,
+                    'description': '',
+                    'amount': '15.00',
+                    'amount_currency': 'USD'}
             ],
-            "credit_cards": [
-                {
-                    "id": "f4eda79e-ba6b-45d5-b0c4-7cd039229bae",
-                    "created": "2017-10-21T06:35:49.581000-05:00",
-                    "type": "VIS",
-                    "number": "1111",
-                    "expiry_month": 1,
-                    "expiry_year": 18
-                }
+            'status': 'OPEN',
+            'balance': [
+                {'amount': '-15.00', 'amount_currency': 'USD'}
             ],
-            "charges": [
+            'invoices': [
                 {
-                    "id": "4b312d25-3567-42d2-acce-e77b3d422479",
-                    "created": "2017-10-21T03:49:27.746000-05:00",
-                    "amount_currency": "USD",
-                    "amount": "15.00",
-                    "description": "",
-                    "invoice": 1
-                }
-            ],
-            "invoices": [
-                {
-                    "id": 1,
-                    "total": [
-                        {
-                            "amount_currency": "USD",
-                            "amount": "15.00"
-                        }
-                    ],
-                    "created": "2017-10-21T03:49:41.728000-05:00",
-                    "status": "PAST_DUE"
+                    'id': 1,
+                    'created': '2017-10-21T03:49:41.728000-05:00',
+                    'modified': '2017-10-22T17:22:22.090000-05:00',
+                    'status': 'PAST_DUE',
+                    'total': [{'amount': '15.00', 'amount_currency': 'USD'}]
                 },
                 {
-                    "id": 2,
-                    "total": [
-
-                    ],
-                    "created": "2017-10-21T04:47:14.554000-05:00",
-                    "status": "PENDING"
+                    'id': 2,
+                    'status': 'PENDING',
+                    'created': '2017-10-21T04:47:14.554000-05:00',
+                    'modified': '2017-10-22T17:22:22.090000-05:00',
+                    'total': []
                 }
-            ],
-            "transactions": [
-
-            ],
-            "created": "2017-10-21T03:49:07.090000-05:00",
-            "currency": "USD",
-            "status": "OPEN"
+            ]
         }

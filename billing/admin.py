@@ -130,7 +130,7 @@ class CreditCardAdmin(ReadOnlyModelAdmin):
     list_select_related = True
 
     raw_id_fields = ['account']
-    readonly_fields = ['created', 'expiry_date']
+    readonly_fields = ['created', 'modified', 'expiry_date']
 
 
 class CreditCardInline(admin.TabularInline):
@@ -170,7 +170,7 @@ class ChargeAdmin(AppendOnlyModelAdmin):
     list_select_related = True
 
     raw_id_fields = ['account']
-    readonly_fields = ['created']
+    readonly_fields = ['created', 'modified']
 
     def has_delete_permission(self, request, obj=None):
         if request.user.is_superuser:
@@ -219,7 +219,7 @@ class TransactionAdmin(ReadOnlyModelAdmin):
     list_select_related = True
 
     raw_id_fields = ['account']
-    readonly_fields = ['created']
+    readonly_fields = ['created', 'modified']
 
 
 class TransactionInline(admin.TabularInline):
@@ -268,7 +268,7 @@ class InvoiceAdmin(AppendOnlyModelAdmin):
     list_select_related = True
 
     raw_id_fields = ['account']
-    readonly_fields = ['created', 'total', pay_invoice_button]
+    readonly_fields = ['created', 'modified', 'total', pay_invoice_button]
     inlines = [ChargeInline, TransactionInline]
 
     def get_urls(self):
@@ -341,7 +341,7 @@ class AccountAdmin(AppendOnlyModelAdmin):
     list_select_related = True
 
     raw_id_fields = ['owner']
-    readonly_fields = ['balance', 'created', create_invoice_button]
+    readonly_fields = ['balance', 'created', 'modified', create_invoice_button]
 
     inlines = [CreditCardInline, ChargeInline, InvoiceInline, TransactionInline]
 

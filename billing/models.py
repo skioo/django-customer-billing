@@ -43,6 +43,7 @@ class Account(Model):
     )
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created = models.DateTimeField(auto_now_add=True, db_index=True)
+    modified = models.DateTimeField(auto_now=True)
     owner = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='billing_account', on_delete=PROTECT)
     currency = CurrencyField(db_index=True)
     status = FSMField(max_length=20, choices=STATUS_CHOICES, default=OPEN, db_index=True)
@@ -89,6 +90,7 @@ class Invoice(Model):
     )
     account = models.ForeignKey(Account, related_name='invoices', on_delete=PROTECT)
     created = models.DateTimeField(auto_now_add=True, db_index=True)
+    modified = models.DateTimeField(auto_now=True)
     status = FSMField(max_length=20, choices=STATUS_CHOICES, default=PENDING, db_index=True)
 
     @transition(field=status, source=PENDING, target=PAST_DUE)
@@ -128,6 +130,7 @@ class Charge(Model):
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created = models.DateTimeField(auto_now_add=True, db_index=True)
+    modified = models.DateTimeField(auto_now=True)
     account = models.ForeignKey(Account, on_delete=PROTECT, related_name='charges')
     invoice = models.ForeignKey(Invoice, null=True, blank=True, related_name='items', on_delete=PROTECT)
     amount = MoneyField(max_digits=12, decimal_places=2)
@@ -163,6 +166,7 @@ class Transaction(Model):
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created = models.DateTimeField(auto_now_add=True, db_index=True)
+    modified = models.DateTimeField(auto_now=True)
     account = models.ForeignKey(Account, related_name='transactions', on_delete=PROTECT)
     success = models.BooleanField()
     invoice = models.ForeignKey(Invoice, related_name='transactions', null=True, blank=True, on_delete=PROTECT)
@@ -201,6 +205,7 @@ def compute_expiry_date(two_digit_year: int, month: int) -> date:
 class CreditCard(Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created = models.DateTimeField(auto_now_add=True, db_index=True)
+    modified = models.DateTimeField(auto_now=True)
     account = models.ForeignKey(Account, related_name='credit_cards', on_delete=PROTECT)
     type = models.CharField(db_index=True, max_length=3)
     number = models.CharField(max_length=255)
