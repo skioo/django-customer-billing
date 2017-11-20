@@ -1,10 +1,9 @@
 from django.db import transaction
-from django_fsm import can_proceed
 from structlog import get_logger
 from typing import Optional
 
 from .. import psp
-from ..models import Invoice, Transaction
+from ..models import CreditCard, Invoice, Transaction
 
 logger = get_logger()
 
@@ -13,30 +12,22 @@ class PreconditionError(Exception):
     pass
 
 
-def pay(invoice_id) -> Optional[Transaction]:
+def pay_with_account_credit_cards(invoice_id) -> Optional[Transaction]:
     """
     Get payed for the invoice, trying the valid credit cards on record for the account.
 
     If successful attaches the payment to the invoice and marks the invoice as payed.
 
     :param invoice_id: the id of the invoice to pay.
-    :return: A transaction (either successful or not), or None if the money could not be taken.
+    :return: A successful transaction, or None if we weren't able to pay the invoice.
     """
     logger.debug('invoice-payment-started', invoice_id=invoice_id)
     with transaction.atomic():
         invoice = Invoice.objects.select_for_update().get(pk=invoice_id)
 
         # Invoice should be in a state that allows payment
-        if not can_proceed(invoice.pay):
-            raise PreconditionError('Invoice not in valid state.')
-
-        # A valid credit card is needed to attempt payment
-        credit_cards = invoice.account.credit_cards.all()
-        if not credit_cards:
-            raise PreconditionError('No credit card on account.')
-        valid_credit_cards = [cc for cc in credit_cards if not cc.is_expired()]
-        if not valid_credit_cards:
-            raise PreconditionError('No valid credit card on account.')
+        if not invoice.in_payable_state:
+            raise PreconditionError('Cannot pay invoice with status {}.'.format(invoice.status))
 
         # The invoice needs a positive total, in a single currency
         total = invoice.total().monies()
@@ -47,6 +38,10 @@ def pay(invoice_id) -> Optional[Transaction]:
         amount = total[0]
         if amount.amount <= 0:
             raise PreconditionError('Cannot pay invoice with non-positive amount.')
+
+        valid_credit_cards = CreditCard.objects.valid().filter(account=invoice.account)
+        if not valid_credit_cards:
+            raise PreconditionError('No valid credit card on account.')
 
         for credit_card in valid_credit_cards:
             try:
@@ -69,7 +64,6 @@ def pay(invoice_id) -> Optional[Transaction]:
                     return payment
                 else:
                     logger.info('invoice-payment-failure', invoice=invoice_id, payment=payment)
-                    return payment
             except Exception as e:
                 logger.error('invoice-payment-error', invoice_id=invoice_id, credit_card=credit_card, exc_info=e)
         return None

@@ -41,10 +41,10 @@ def reopen(account_id: str) -> None:
         account.save()
 
 
-def create_invoice_if_pending_charges(account_id: str) -> Sequence[Invoice]:
+def create_invoices(account_id: str) -> Sequence[Invoice]:
     """
     Creates and returns the invoices for any uninvoiced charges in the account.
-    If multiple currencies are involved, then one invoice per currency is generated.
+    If multiple currencies are involved then one invoice per currency is generated.
 
     :param account_id: The account to examine for uninvoiced charges.
     :return: A possibly empty list of Invoice objects.

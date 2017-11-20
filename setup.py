@@ -16,6 +16,7 @@ setup(
         'billing',
         'billing.actions',
         'billing.migrations',
+        'billing.management.commands',
     ],
     install_requires=[
         'Django>=1.10',

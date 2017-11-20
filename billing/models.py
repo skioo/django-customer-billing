@@ -9,7 +9,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Model, PROTECT, QuerySet, Sum
 from django.utils.translation import ugettext_lazy as _
-from django_fsm import FSMField, transition
+from django_fsm import FSMField, can_proceed, transition
 from djmoney.models.fields import CurrencyField, MoneyField
 from moneyed import Money
 from typing import List, Tuple
@@ -32,6 +32,9 @@ def total_amount(qs) -> Total:
 class OnlyOpenAccountsManager(models.Manager):
     def get_queryset(self):
         return super().get_queryset().filter(status=Account.OPEN)
+
+    def with_uninvoiced_charges(self):
+        return self.filter(charges__isnull=False, charges__invoice__isnull=True)
 
 
 class Account(Model):
@@ -76,6 +79,10 @@ class Account(Model):
 
 ########################################################################################################
 
+class InvoiceManager(models.Manager):
+    def payable(self) -> QuerySet:
+        return Invoice.objects.filter(status__in=[Invoice.PENDING, Invoice.PAST_DUE])
+
 
 class Invoice(Model):
     PENDING = 'PENDING'
@@ -93,6 +100,8 @@ class Invoice(Model):
     modified = models.DateTimeField(auto_now=True)
     status = FSMField(max_length=20, choices=STATUS_CHOICES, default=PENDING, db_index=True)
 
+    objects = InvoiceManager()
+
     @transition(field=status, source=PENDING, target=PAST_DUE)
     def mark_past_due(self):
         pass
@@ -104,6 +113,10 @@ class Invoice(Model):
     @transition(field=status, source=PENDING, target=CANCELLED)
     def cancel(self):
         pass
+
+    @property
+    def in_payable_state(self):
+        return can_proceed(self.pay)
 
     def total(self):
         return total_amount(Charge.objects.filter(invoice=self))
@@ -196,10 +209,20 @@ class Transaction(Model):
             'success' if self.success else 'failure')
 
 
+########################################################################################################
+
+
 def compute_expiry_date(two_digit_year: int, month: int) -> date:
     year = 2000 + two_digit_year
     _, last_day_of_month = calendar.monthrange(year, month)
     return date(year=year, month=month, day=last_day_of_month)
+
+
+class CreditCardQuerySet(models.QuerySet):
+    def valid(self, as_of: date = None):
+        if as_of is None:
+            as_of = datetime.now().date()
+        return self.filter(expiry_date__gte=as_of)
 
 
 class CreditCard(Model):
@@ -217,10 +240,12 @@ class CreditCard(Model):
     psp_object_id = models.UUIDField(db_index=True)
     psp_object = GenericForeignKey('psp_content_type', 'psp_object_id')
 
-    def is_expired(self, as_of: date = None):
+    objects = CreditCardQuerySet.as_manager()
+
+    def is_valid(self, as_of: date = None):
         if as_of is None:
             as_of = datetime.now().date()
-        return self.expiry_date < as_of
+        return self.expiry_date >= as_of
 
     def save(self, *args, **kwargs):
         if self.expiry_year is not None and self.expiry_month is not None:

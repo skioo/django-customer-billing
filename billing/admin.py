@@ -2,6 +2,7 @@ from datetime import datetime
 
 from django.conf.urls import url
 from django.contrib import admin
+from django.db.models import Max
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.utils.html import format_html
@@ -94,9 +95,9 @@ psp_admin_link.short_description = 'PSP Object'  # type: ignore
 ##############################################################
 # Credit Cards
 
-class CreditCardExpiredFilter(admin.SimpleListFilter):
-    title = _('Expired')
-    parameter_name = 'expired'
+class CreditCardValidFilter(admin.SimpleListFilter):
+    title = _('Valid')
+    parameter_name = 'valid'
 
     def lookups(self, request, model_admin):
         return (
@@ -108,9 +109,9 @@ class CreditCardExpiredFilter(admin.SimpleListFilter):
     def queryset(self, request, queryset):
         today = datetime.now().date()
         if self.value() == 'yes':
-            return queryset.filter(expiry_date__lt=today)
-        if self.value() == 'no':
             return queryset.filter(expiry_date__gte=today)
+        if self.value() == 'no':
+            return queryset.filter(expiry_date__lt=today)
 
 
 def credit_card_expiry(obj):
@@ -120,12 +121,21 @@ def credit_card_expiry(obj):
 credit_card_expiry.admin_order_field = 'expiry_date'  # type: ignore
 
 
+def credit_card_is_valid(obj):
+    return obj.is_valid()
+
+
+credit_card_is_valid.boolean = True  # type: ignore
+
+credit_card_is_valid.short_description = 'valid'  # type: ignore
+
+
 @admin.register(CreditCard)
 class CreditCardAdmin(ReadOnlyModelAdmin):
     date_hierarchy = 'created'
-    list_display = ['account', created_on, 'type', 'number', credit_card_expiry, psp_admin_link]
+    list_display = ['account', created_on, 'type', 'number', credit_card_expiry, credit_card_is_valid, psp_admin_link]
     search_fields = ['number'] + account_owner_search_fields
-    list_filter = ['type', CreditCardExpiredFilter]
+    list_filter = ['type', CreditCardValidFilter]
     ordering = ['-created']
     list_select_related = True
 
@@ -235,17 +245,20 @@ class TransactionInline(admin.TabularInline):
 ##############################################################
 # Invoices
 
-def pay_invoice_button(invoice):
-    return format_html('<a href="{}">{}</a>',
-                       reverse('admin:billing-pay-invoice', args=[invoice.pk]),
-                       _('Pay Now'))
+def pay_invoice_button(obj):
+    if obj.pk and obj.in_payable_state:
+        return format_html(
+            '<a href="{}">Pay Now</a>',
+            reverse('admin:billing-pay-invoice', args=[obj.pk]))
+    else:
+        return '-'
 
 
 pay_invoice_button.short_description = _('Pay Invoice')  # type: ignore
 
 
 def do_pay_invoice(request, invoice_id):
-    invoices.pay(invoice_id)
+    invoices.pay_with_account_credit_cards(invoice_id)
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
 
@@ -258,22 +271,36 @@ invoice_number.short_description = 'Invoice'  # type: ignore
 invoice_number.admin_order_field = 'pk'  # type: ignore
 
 
+def invoice_last_transaction(obj):
+    dt = obj.last_transaction
+    if dt:
+        return dt.date()
+
+
+invoice_last_transaction.short_description = 'Last transaction'  # type: ignore
+
+
 @admin.register(Invoice)
 class InvoiceAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
-    list_display = [invoice_number, 'account', created_on, 'status', 'total']
+    list_display = [invoice_number, 'account', created_on, invoice_last_transaction, 'status', 'total']
     list_filter = ['status']
     search_fields = ['id', 'account__owner__email', 'account__owner__first_name', 'account__owner__last_name']
     ordering = ['-created']
-    list_select_related = True
 
     raw_id_fields = ['account']
     readonly_fields = ['created', 'modified', 'total', pay_invoice_button]
     inlines = [ChargeInline, TransactionInline]
 
+    def get_queryset(self, request):
+        return super().get_queryset(request) \
+            .select_related('account__owner') \
+            .prefetch_related('transactions') \
+            .annotate(last_transaction=Max('transactions__created'))
+
     def get_urls(self):
         custom_urls = [
-            url(r'^(?P<invoice_id>.+)/pay/$',
+            url(r'^(?P<invoice_id>[0-9a-f-]+)/pay/$',
                 self.admin_site.admin_view(do_pay_invoice),
                 name='billing-pay-invoice'),
         ]
@@ -317,18 +344,21 @@ def punctual(self):
 punctual.boolean = True  # type: ignore
 
 
-def create_invoice_button(obj):
-    return format_html(
-        '<a class="button" href="{}">Create Invoice Now</a>',
-        reverse('admin:billing-create-invoice', args=[obj.pk]),
-    )
+def create_invoices_button(obj):
+    if obj.pk:
+        return format_html(
+            '<a class="button" href="{}">Create Invoices Now</a>',
+            reverse('admin:billing-create-invoices', args=[obj.pk]),
+        )
+    else:
+        return '-'
 
 
-create_invoice_button.short_description = _('Create Invoice')  # type: ignore
+create_invoices_button.short_description = _('Create Invoices')  # type: ignore
 
 
-def do_create_invoice(request, account_id):
-    accounts.create_invoice_if_pending_charges(account_id=account_id)
+def do_create_invoices(request, account_id):
+    accounts.create_invoices(account_id=account_id)
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
 
@@ -341,7 +371,7 @@ class AccountAdmin(AppendOnlyModelAdmin):
     list_select_related = True
 
     raw_id_fields = ['owner']
-    readonly_fields = ['balance', 'created', 'modified', create_invoice_button]
+    readonly_fields = ['balance', 'created', 'modified', create_invoices_button]
 
     inlines = [CreditCardInline, ChargeInline, InvoiceInline, TransactionInline]
 
@@ -349,10 +379,9 @@ class AccountAdmin(AppendOnlyModelAdmin):
         urls = super().get_urls()
         my_urls = [
             url(
-                r'^(?P<account_id>[0-9a-f-]+)/create_invoice/$',
-                self.admin_site.admin_view(do_create_invoice),
-                name='billing-create-invoice'
+                r'^(?P<account_id>[0-9a-f-]+)/create_invoices/$',
+                self.admin_site.admin_view(do_create_invoices),
+                name='billing-create-invoices'
             )
         ]
-
         return my_urls + urls
