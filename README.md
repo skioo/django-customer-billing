@@ -30,4 +30,23 @@ Add billing to your `INSTALLED_APPS`:
 Run the migrations: 
 
     ./manage.py migrate
-    
+
+
+Development
+-----------
+
+To install all dependencies:
+
+    python setup.py develop
+
+To run tests:
+
+    pip install pytest-django
+    pytest
+
+
+
+To generate a diagram representing the state-machines:
+
+    pip install graphviz
+    ./manage.py graph_transitions -o docs/state-machines.png

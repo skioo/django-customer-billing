@@ -1,0 +1,25 @@
+digraph {
+	subgraph cluster_billing_Account_status {
+		graph [label="billing.Account.status"]
+		"billing.account.status.OPEN" [label=OPEN shape=circle]
+		"billing.account.status._initial" [label="" shape=point]
+		"billing.account.status._initial" -> "billing.account.status.OPEN"
+		"billing.account.status.CLOSED" [label=CLOSED shape=circle]
+		"billing.account.status.CLOSED" -> "billing.account.status.OPEN" [label=reopen]
+		"billing.account.status.OPEN" -> "billing.account.status.CLOSED" [label=close]
+	}
+	subgraph cluster_billing_Invoice_status {
+		graph [label="billing.Invoice.status"]
+		"billing.invoice.status.CANCELLED" [label=CANCELLED shape=doublecircle]
+		"billing.invoice.status.PAYED" [label=PAYED shape=doublecircle]
+		"billing.invoice.status.PAST_DUE" [label=PAST_DUE shape=circle]
+		"billing.invoice.status.PENDING" [label=PENDING shape=circle]
+		"billing.invoice.status._initial" [label="" shape=point]
+		"billing.invoice.status._initial" -> "billing.invoice.status.PENDING"
+		"billing.invoice.status.PENDING" -> "billing.invoice.status.PAST_DUE" [label=mark_past_due]
+		"billing.invoice.status.PENDING" -> "billing.invoice.status.CANCELLED" [label=cancel]
+		"billing.invoice.status.PAST_DUE" -> "billing.invoice.status.CANCELLED" [label=cancel]
+		"billing.invoice.status.PENDING" -> "billing.invoice.status.PAYED" [label=pay]
+		"billing.invoice.status.PAST_DUE" -> "billing.invoice.status.PAYED" [label=pay]
+	}
+}

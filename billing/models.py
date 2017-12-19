@@ -110,7 +110,7 @@ class Invoice(Model):
     def pay(self):
         pass
 
-    @transition(field=status, source=PENDING, target=CANCELLED)
+    @transition(field=status, source=[PENDING, PAST_DUE], target=CANCELLED)
     def cancel(self):
         pass
 
