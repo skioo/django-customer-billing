@@ -226,6 +226,13 @@ class CreditCardQuerySet(models.QuerySet):
 
 
 class CreditCard(Model):
+    ACTIVE = 'ACTIVE'
+    INACTIVE = 'INACTIVE'
+    STATUS_CHOICES = (
+        (ACTIVE, _('Active')),
+        (INACTIVE, _('Inactive')),
+    )
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created = models.DateTimeField(auto_now_add=True, db_index=True)
     modified = models.DateTimeField(auto_now=True)
@@ -240,7 +247,17 @@ class CreditCard(Model):
     psp_object_id = models.UUIDField(db_index=True)
     psp_object = GenericForeignKey('psp_content_type', 'psp_object_id')
 
+    status = FSMField(max_length=20, choices=STATUS_CHOICES, default=ACTIVE, db_index=True)
+
     objects = CreditCardQuerySet.as_manager()
+
+    @transition(field=status, source=ACTIVE, target=INACTIVE)
+    def deactivate(self):
+        pass
+
+    @transition(field=status, source=INACTIVE, target=ACTIVE)
+    def reactivate(self):
+        pass
 
     def is_valid(self, as_of: date = None):
         if as_of is None:

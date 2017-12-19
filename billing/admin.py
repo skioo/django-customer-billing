@@ -133,9 +133,10 @@ credit_card_is_valid.short_description = 'valid'  # type: ignore
 @admin.register(CreditCard)
 class CreditCardAdmin(ReadOnlyModelAdmin):
     date_hierarchy = 'created'
-    list_display = ['account', created_on, 'type', 'number', credit_card_expiry, credit_card_is_valid, psp_admin_link]
+    list_display = ['account', created_on, 'status', 'type', 'number', credit_card_expiry, credit_card_is_valid,
+                    psp_admin_link]
     search_fields = ['number'] + account_owner_search_fields
-    list_filter = ['type', CreditCardValidFilter]
+    list_filter = ['type', 'status', CreditCardValidFilter]
     ordering = ['-created']
     list_select_related = True
 
@@ -145,7 +146,7 @@ class CreditCardAdmin(ReadOnlyModelAdmin):
 
 class CreditCardInline(admin.TabularInline):
     model = CreditCard
-    fields = readonly_fields = ['type', 'number', credit_card_expiry, created_on, psp_admin_link]
+    fields = readonly_fields = ['type', 'number', 'status', credit_card_expiry, created_on, psp_admin_link]
     show_change_link = True
     can_delete = False
     extra = 0

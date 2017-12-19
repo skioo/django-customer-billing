@@ -5,8 +5,8 @@ digraph {
 		"billing.account.status._initial" [label="" shape=point]
 		"billing.account.status._initial" -> "billing.account.status.OPEN"
 		"billing.account.status.CLOSED" [label=CLOSED shape=circle]
-		"billing.account.status.CLOSED" -> "billing.account.status.OPEN" [label=reopen]
 		"billing.account.status.OPEN" -> "billing.account.status.CLOSED" [label=close]
+		"billing.account.status.CLOSED" -> "billing.account.status.OPEN" [label=reopen]
 	}
 	subgraph cluster_billing_Invoice_status {
 		graph [label="billing.Invoice.status"]
@@ -16,10 +16,19 @@ digraph {
 		"billing.invoice.status.PENDING" [label=PENDING shape=circle]
 		"billing.invoice.status._initial" [label="" shape=point]
 		"billing.invoice.status._initial" -> "billing.invoice.status.PENDING"
-		"billing.invoice.status.PENDING" -> "billing.invoice.status.PAST_DUE" [label=mark_past_due]
-		"billing.invoice.status.PENDING" -> "billing.invoice.status.CANCELLED" [label=cancel]
-		"billing.invoice.status.PAST_DUE" -> "billing.invoice.status.CANCELLED" [label=cancel]
-		"billing.invoice.status.PENDING" -> "billing.invoice.status.PAYED" [label=pay]
 		"billing.invoice.status.PAST_DUE" -> "billing.invoice.status.PAYED" [label=pay]
+		"billing.invoice.status.PAST_DUE" -> "billing.invoice.status.CANCELLED" [label=cancel]
+		"billing.invoice.status.PENDING" -> "billing.invoice.status.CANCELLED" [label=cancel]
+		"billing.invoice.status.PENDING" -> "billing.invoice.status.PAST_DUE" [label=mark_past_due]
+		"billing.invoice.status.PENDING" -> "billing.invoice.status.PAYED" [label=pay]
+	}
+	subgraph cluster_billing_CreditCard_status {
+		graph [label="billing.CreditCard.status"]
+		"billing.credit_card.status.INACTIVE" [label=INACTIVE shape=circle]
+		"billing.credit_card.status.ACTIVE" [label=ACTIVE shape=circle]
+		"billing.credit_card.status._initial" [label="" shape=point]
+		"billing.credit_card.status._initial" -> "billing.credit_card.status.ACTIVE"
+		"billing.credit_card.status.INACTIVE" -> "billing.credit_card.status.ACTIVE" [label=reactivate]
+		"billing.credit_card.status.ACTIVE" -> "billing.credit_card.status.INACTIVE" [label=deactivate]
 	}
 }

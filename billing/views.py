@@ -2,6 +2,8 @@ from django.http import Http404
 from rest_framework import permissions, serializers
 from rest_framework.decorators import permission_classes
 from rest_framework.generics import RetrieveAPIView
+from rest_framework.mixins import UpdateModelMixin, RetrieveModelMixin, ListModelMixin
+from rest_framework.viewsets import GenericViewSet
 
 from .models import Account, Charge, CreditCard, Invoice, Transaction
 from .total import TotalSerializer
@@ -13,6 +15,45 @@ class CreditCardSerializer(serializers.ModelSerializer):
         exclude = ['account', 'expiry_date', 'psp_content_type', 'psp_object_id']
 
 
+class CreditCardUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CreditCard
+        fields = ['status']
+
+    def update(self, instance, validated_data):
+        new_status = validated_data['status']
+        if new_status == CreditCard.INACTIVE:
+            instance.deactivate()
+        elif new_status == CreditCard.ACTIVE:
+            instance.reactivate()
+        else:
+            raise Exception('Unknown status')
+        instance.save()
+        return instance
+
+
+@permission_classes([permissions.IsAuthenticated])
+class CreditCardViewSet(ListModelMixin, RetrieveModelMixin, UpdateModelMixin, GenericViewSet):
+    """
+    retrieve: Return the credit card information
+    partial_update: Change the status of the creditcard.
+    """
+    http_method_names = ['get', 'patch']  # We don't want put (inherited from UpdateModelMixin)
+
+    def get_queryset(self):
+        return CreditCard.objects.filter(account__owner=self.request.user)
+
+    def get_serializer_class(self):
+        method = self.request.method
+        if method == 'GET':
+            return CreditCardSerializer
+        elif method == 'PATCH':
+            return CreditCardUpdateSerializer
+        else:
+            raise Exception('Unknown method')
+
+
+########################################################################################################
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
