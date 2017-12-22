@@ -77,6 +77,15 @@ def created_on(obj):
 
 
 created_on.admin_order_field = 'created'  # type: ignore
+created_on.short_description = 'created'  # type: ignore
+
+
+def modified_on(obj):
+    return obj.modified.date()
+
+
+modified_on.admin_order_field = 'modified'  # type: ignore
+modified_on.short_description = 'modified'  # type: ignore
 
 
 def psp_admin_link(obj):
@@ -133,7 +142,8 @@ credit_card_is_valid.short_description = 'valid'  # type: ignore
 @admin.register(CreditCard)
 class CreditCardAdmin(ReadOnlyModelAdmin):
     date_hierarchy = 'created'
-    list_display = ['account', created_on, 'status', 'type', 'number', credit_card_expiry, credit_card_is_valid,
+    list_display = ['account', created_on, modified_on, 'status', 'type', 'number', credit_card_expiry,
+                    credit_card_is_valid,
                     psp_admin_link]
     search_fields = ['number'] + account_owner_search_fields
     list_filter = ['type', 'status', CreditCardValidFilter]
@@ -174,7 +184,7 @@ charge_invoice.admin_order_field = 'invoice'  # type: ignore
 @admin.register(Charge)
 class ChargeAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
-    list_display = ['type', 'account', 'description', created_on, charge_invoice, amount]
+    list_display = ['type', 'account', 'description', created_on, modified_on, charge_invoice, amount]
     search_fields = ['amount', 'amount_currency', 'description', 'invoice__id'] + account_owner_search_fields
     list_filter = ['amount_currency']
     ordering = ['-created']
@@ -366,7 +376,7 @@ def do_create_invoices(request, account_id):
 @admin.register(Account)
 class AccountAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
-    list_display = ['owner', created_on, punctual, 'currency', 'status']
+    list_display = ['owner', created_on, modified_on, punctual, 'currency', 'status']
     search_fields = ['owner__email', 'owner__first_name', 'owner__last_name']
     list_filter = [AccountRatingFilter, 'currency', 'status']
     list_select_related = True
