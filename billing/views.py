@@ -35,6 +35,7 @@ class CreditCardUpdateSerializer(serializers.ModelSerializer):
 @permission_classes([permissions.IsAuthenticated])
 class CreditCardViewSet(ListModelMixin, RetrieveModelMixin, UpdateModelMixin, GenericViewSet):
     """
+    list: Return the list of credit cards registered on the account.
     retrieve: Return the credit card information
     partial_update: Change the status of the creditcard.
     """
