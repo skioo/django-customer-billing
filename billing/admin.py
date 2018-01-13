@@ -378,6 +378,7 @@ class AccountAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
     list_display = ['owner', created_on, modified_on, punctual, 'currency', 'status']
     search_fields = ['owner__email', 'owner__first_name', 'owner__last_name']
+    ordering = ['-created']
     list_filter = [AccountRatingFilter, 'currency', 'status']
     list_select_related = True
 
