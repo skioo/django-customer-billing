@@ -11,7 +11,7 @@ from moneyed.localization import format_money
 from structlog import get_logger
 
 from .actions import accounts, invoices
-from .models import Account, Charge, CreditCard, Invoice, Transaction
+from .models import Account, Charge, CreditCard, Invoice, Transaction, ProductProperty
 
 logger = get_logger()
 
@@ -181,17 +181,34 @@ charge_invoice.short_description = 'Invoice'  # type: ignore
 charge_invoice.admin_order_field = 'invoice'  # type: ignore
 
 
+class ProductPropertyInline(admin.TabularInline):
+    model = ProductProperty
+    verbose_name_plural = 'Product props'
+    ordering = ['name']
+
+
+def product_properties(obj):
+    return {p.name: p.value for p in obj.product_properties.all()}
+
+
+product_properties.short_description = 'Product props'  # type: ignore
+
+
 @admin.register(Charge)
 class ChargeAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
-    list_display = ['type', 'account', 'description', created_on, modified_on, charge_invoice, amount]
-    search_fields = ['amount', 'amount_currency', 'description', 'invoice__id'] + account_owner_search_fields
+    list_display = ['type', 'account', 'product_code', product_properties, 'ad_hoc_label', created_on, modified_on,
+                    charge_invoice,
+                    amount]
+    search_fields = ['amount', 'amount_currency', 'product_code', 'product_properties__value', 'ad_hoc_label',
+                     'invoice__id'] + account_owner_search_fields
     list_filter = ['amount_currency']
     ordering = ['-created']
     list_select_related = True
 
     raw_id_fields = ['account']
     readonly_fields = ['created', 'modified']
+    inlines = [ProductPropertyInline]
 
     def has_delete_permission(self, request, obj=None):
         if request.user.is_superuser:
@@ -200,15 +217,23 @@ class ChargeAdmin(AppendOnlyModelAdmin):
             return True
         return False
 
+    def get_queryset(self, request):
+        return super().get_queryset(request) \
+            .prefetch_related('invoice') \
+            .prefetch_related('product_properties')
+
 
 class ChargeInline(admin.TabularInline):
     verbose_name_plural = 'Charges and Credits'
     model = Charge
-    fields = readonly_fields = ['type', 'description', created_on, charge_invoice, amount]
+    fields = readonly_fields = ['type', 'product_code', created_on, charge_invoice, amount, product_properties]
     show_change_link = True
     can_delete = False
     extra = 0
     ordering = ['-created']
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related('product_properties')
 
 
 #############################################################

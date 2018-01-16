@@ -52,14 +52,27 @@
     "created": "2017-10-21T08:49:27.746Z",
     "modified": "2017-10-22T22:22:22.090Z",
     "account": "016e8ed0-8786-4ffc-b5e0-bf2b919c8d2b", "invoice": 1,
-    "amount_currency": "USD", "amount": "15.00", "description": ""
+    "amount_currency": "USD", "amount": "15.00", "product_code": "APRODUCT",
+    "ad_hoc_label": "some handcrafted label"
   }
 }, {
   "model": "billing.charge", "pk": "d98e1970-e9d9-4916-bfdf-6f59f12dbd88", "fields": {
     "created": "2017-10-21T11:19:13.504Z",
     "modified": "2017-10-22T22:22:22.090Z",
     "account": "c8674163-9306-49ee-95ed-17860def82a4", "invoice": null,
-    "amount_currency": "CHF", "amount": "33.00", "description": "33 ist gut"
+    "amount_currency": "CHF", "amount": "33.00", "product_code": "BPRODUCT"
+  }
+}, {
+  "model": "billing.productproperty", "pk": "a583e6c1-1111-4ea6-afbb-5a3ee57c7857", "fields": {
+    "created": "2018-01-17T07:11:35.520Z", "modified": "2018-01-17T07:11:35.520Z",
+    "charge": "d98e1970-e9d9-4916-bfdf-6f59f12dbd88",
+    "name": "color", "value": "blue"
+  }
+}, {
+  "model": "billing.productproperty", "pk": "a583e6c1-7777-4ea6-afbb-5a3ee57c7857", "fields": {
+    "created": "2018-01-17T07:11:35.520Z", "modified": "2018-01-17T07:11:35.520Z",
+    "charge": "d98e1970-e9d9-4916-bfdf-6f59f12dbd88",
+    "name": "size", "value": "medium"
   }
 }, {
   "model": "billing.transaction", "pk": "0d21a825-8133-4203-88d2-3ea01180084b", "fields": {

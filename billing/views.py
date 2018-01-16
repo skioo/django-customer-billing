@@ -5,7 +5,7 @@ from rest_framework.generics import RetrieveAPIView
 from rest_framework.mixins import UpdateModelMixin, RetrieveModelMixin, ListModelMixin
 from rest_framework.viewsets import GenericViewSet
 
-from .models import Account, Charge, CreditCard, Invoice, Transaction
+from .models import Account, Charge, CreditCard, Invoice, Transaction, ProductProperty
 from .total import TotalSerializer
 
 
@@ -55,16 +55,25 @@ class CreditCardViewSet(ListModelMixin, RetrieveModelMixin, UpdateModelMixin, Ge
 
 
 ########################################################################################################
+
+class ProductPropertySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductProperty
+        fields = ['name', 'value']
+
+
+class ChargeSerializer(serializers.ModelSerializer):
+    product_properties = ProductPropertySerializer(read_only=True, many=True)
+
+    class Meta:
+        model = Charge
+        exclude = ['account']
+
+
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
         exclude = ['account', 'psp_content_type', 'psp_object_id']
-
-
-class ChargeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Charge
-        exclude = ['account']
 
 
 class InvoiceSerializer(serializers.ModelSerializer):

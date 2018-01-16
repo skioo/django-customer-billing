@@ -15,7 +15,7 @@ class AccountViewTest(TestCase):
         client = APIClient()
         client.force_authenticate(user111)
 
-        with self.assertNumQueries(9):
+        with self.assertNumQueries(10):
             response = client.get(reverse('billing_account'))
         assert response.status_code == HTTP_200_OK
         assert response.json() == {
@@ -24,15 +24,16 @@ class AccountViewTest(TestCase):
             'modified': '2017-10-22T17:22:22.090000-05:00',
             'currency': 'USD',
             'credit_cards': [
-                {'id': 'f4eda79e-ba6b-45d5-b0c4-7cd039229bae',
-                 'created': '2017-10-21T06:35:49.581000-05:00',
-                 'modified': '2017-10-22T17:22:22.090000-05:00',
-                 'expiry_year': 18,
-                 'expiry_month': 1,
-                 'number': '1111',
-                 'type': 'VIS',
-                 'status': 'ACTIVE',
-                 }
+                {
+                    'id': 'f4eda79e-ba6b-45d5-b0c4-7cd039229bae',
+                    'created': '2017-10-21T06:35:49.581000-05:00',
+                    'modified': '2017-10-22T17:22:22.090000-05:00',
+                    'expiry_year': 18,
+                    'expiry_month': 1,
+                    'number': '1111',
+                    'type': 'VIS',
+                    'status': 'ACTIVE',
+                }
             ], 'transactions': [
             ], 'charges': [
                 {
@@ -40,9 +41,12 @@ class AccountViewTest(TestCase):
                     'created': '2017-10-21T03:49:27.746000-05:00',
                     'modified': '2017-10-22T17:22:22.090000-05:00',
                     'invoice': 1,
-                    'description': '',
+                    'ad_hoc_label': 'some handcrafted label',
+                    'product_code': 'APRODUCT',
+                    'product_properties': [],
                     'amount': '15.00',
-                    'amount_currency': 'USD'}
+                    'amount_currency': 'USD'
+                }
             ],
             'status': 'OPEN',
             'balance': [
@@ -55,8 +59,7 @@ class AccountViewTest(TestCase):
                     'modified': '2017-10-22T17:22:22.090000-05:00',
                     'status': 'PAST_DUE',
                     'total': [{'amount': '15.00', 'amount_currency': 'USD'}]
-                },
-                {
+                }, {
                     'id': 2,
                     'status': 'PENDING',
                     'created': '2017-10-21T04:47:14.554000-05:00',
@@ -64,6 +67,29 @@ class AccountViewTest(TestCase):
                     'total': []
                 }
             ]
+        }
+
+    def test_it_should_retrieve_charge_product_attributes(self):
+        user222 = User.objects.get(id=222)
+        client = APIClient()
+        client.force_authenticate(user222)
+
+        with self.assertNumQueries(9):
+            response = client.get(reverse('billing_account'))
+        assert response.status_code == HTTP_200_OK
+        assert response.json()['charges'][0] == {
+            'id': 'd98e1970-e9d9-4916-bfdf-6f59f12dbd88',
+            'created': '2017-10-21T06:19:13.504000-05:00',
+            'modified': '2017-10-22T17:22:22.090000-05:00',
+            'amount_currency': 'CHF',
+            'amount': '33.00',
+            'ad_hoc_label': '',
+            'product_code': 'BPRODUCT',
+            'product_properties': [
+                {'name': 'color', 'value': 'blue'},
+                {'name': 'size', 'value': 'medium'}
+            ],
+            'invoice': None
         }
 
 

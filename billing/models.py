@@ -1,18 +1,21 @@
 import calendar
 import uuid
 from datetime import date, datetime
+from typing import List, Tuple
 
+import re
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models import Model, PROTECT, CASCADE, QuerySet, Sum
 from django.utils.translation import ugettext_lazy as _
 from django_fsm import FSMField, can_proceed, transition
 from djmoney.models.fields import CurrencyField, MoneyField
 from moneyed import Money
-from typing import List, Tuple
 
 from .total import Total
 
@@ -127,6 +130,9 @@ class Invoice(Model):
 
 ########################################################################################################
 
+product_code_validator = RegexValidator(regex=r'^[A-Z0-9]{4,8}$',
+                                        message='Between 4 and 8 uppercase letters or digits')
+
 
 class ChargeManager(models.Manager):
     def uninvoiced_with_total(self, account_id: str) -> Tuple[List, Total]:
@@ -147,9 +153,15 @@ class Charge(Model):
     account = models.ForeignKey(Account, on_delete=PROTECT, related_name='charges')
     invoice = models.ForeignKey(Invoice, null=True, blank=True, related_name='items', on_delete=PROTECT)
     amount = MoneyField(max_digits=12, decimal_places=2)
-    description = models.TextField(blank=True)
+    ad_hoc_label = models.TextField(blank=True, help_text='When not empty, this is shown verbatim to the user.')
+    product_code = models.CharField(max_length=8, blank=True, validators=[product_code_validator], db_index=True,
+                                    help_text='Identifies the kind of product being charged or credited')
 
     objects = ChargeManager()
+
+    def clean(self):
+        if not (self.ad_hoc_label or self.product_code):
+            raise ValidationError('Either the ad-hoc-label or the product-code must be filled.')
 
     @property
     def type(self):
@@ -162,6 +174,23 @@ class Charge(Model):
     @property
     def is_invoiced(self):
         return self.invoice is not None
+
+
+product_property_name_validator = RegexValidator(regex=r'^[a-z]\w*$',
+                                                 flags=re.ASCII | re.IGNORECASE,
+                                                 message='a letter maybe followed by letters, numbers, or underscores')
+
+
+class ProductProperty(Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    created = models.DateTimeField(auto_now_add=True, db_index=True)
+    modified = models.DateTimeField(auto_now=True)
+    charge = models.ForeignKey(Charge, on_delete=PROTECT, related_name='product_properties')
+    name = models.CharField(max_length=100, validators=[product_property_name_validator])
+    value = models.CharField(max_length=255)
+
+    class Meta:
+        unique_together = ['charge', 'name']
 
 
 ########################################################################################################

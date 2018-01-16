@@ -1,4 +1,6 @@
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from django.test import TestCase
 from moneyed import Money
 from pytest import raises
@@ -16,19 +18,56 @@ class AccountActionsTest(TestCase):
         user = User.objects.create_user('a-username')
         self.account = Account.objects.create(owner=user, currency='CHF')
 
+    def test_it_cannot_create_charge_with_missing_attributes(self):
+        with raises(ValidationError):
+            accounts.add_charge(account_id=self.account.id, amount=Money(10, 'CHF'))
+
+    def test_it_should_add_charge(self):
+        with self.assertNumQueries(4):
+            accounts.add_charge(
+                account_id=self.account.id,
+                amount=Money(10, 'CHF'),
+                product_code='PRODUCTA',
+                product_properties=[('color', 'blue'), ('fabric', 'cotton'), ('size', 'M')])
+
+        # Now verify what's been written to the db
+        retrieved = Charge.objects.all()[0]
+        product_properties_dict = {p.name: p.value for p in retrieved.product_properties.all()}
+        assert product_properties_dict == {
+            'color': 'blue',
+            'fabric': 'cotton',
+            'size': 'M'
+        }
+
+    def test_it_should_not_add_charge_if_invalid_property_name(self):
+        with raises(ValidationError):
+            accounts.add_charge(
+                account_id=self.account.id,
+                amount=Money(10, 'CHF'),
+                product_code='PRODUCTA',
+                product_properties=[('123', 'blue')])
+
+    def test_it_should_not_add_charge_if_duplicate_property_names(self):
+        with raises(IntegrityError):
+            accounts.add_charge(
+                account_id=self.account.id,
+                amount=Money(10, 'CHF'),
+                product_code='PRODUCTA',
+                product_properties=[('color', 'blue'), ('color', 'red')])
+
     def test_it_should_not_create_invoice_when_money_is_owed_to_the_user(self):
-        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), description='a charge')
-        Charge.objects.create(account=self.account, amount=Money(-30, 'CHF'), description='a credit')
+        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
+        Charge.objects.create(account=self.account, amount=Money(-30, 'CHF'), product_code='ACREDIT')
         assert not accounts.create_invoices(account_id=self.account.pk)
 
     def test_it_should_not_create_an_invoice_when_no_money_is_due(self):
-        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), description='a charge')
-        Charge.objects.create(account=self.account, amount=Money(-10, 'CHF'), description='a credit')
+        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
+        Charge.objects.create(account=self.account, amount=Money(-10, 'CHF'), product_code='ACREDIT')
         assert not accounts.create_invoices(account_id=self.account.pk)
 
     def test_it_should_create_an_invoice_when_money_is_due(self):
-        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), description='a charge')
-        Charge.objects.create(account=self.account, amount=Money(-3, 'CHF'), description='a credit')
+        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
+        Charge.objects.create(account=self.account, amount=Money(-3, 'CHF'), product_code='ACREDIT')
         invoices = accounts.create_invoices(account_id=self.account.pk)
         assert len(invoices) == 1
         invoice = invoices[0]
@@ -39,8 +78,8 @@ class AccountActionsTest(TestCase):
         assert not accounts.create_invoices(account_id=self.account.pk)
 
     def test_it_should_handle_multicurrency_univoiced_charges(self):
-        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), description='a 10 CHF charge')
-        Charge.objects.create(account=self.account, amount=Money(30, 'EUR'), description='a 30 EURO charge')
+        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='10CHF')
+        Charge.objects.create(account=self.account, amount=Money(30, 'EUR'), product_code='30EURO')
         invoices = accounts.create_invoices(account_id=self.account.pk)
         assert len(invoices) == 2
 
@@ -48,13 +87,13 @@ class AccountActionsTest(TestCase):
         invoice1 = invoices[0]
         items1 = invoice1.items.all()
         assert len(items1) == 1
-        assert items1[0].description == 'a 10 CHF charge'
+        assert items1[0].product_code == '10CHF'
         assert invoice1.total().currencies() == ['CHF']
 
         invoice2 = invoices[1]
         items2 = invoice2.items.all()
         assert len(items2) == 1
-        assert items2[0].description == 'a 30 EURO charge'
+        assert items2[0].product_code == '30EURO'
         assert invoice2.total().currencies() == ['EUR']
 
         # Verify there is nothing left to invoice on this account
@@ -97,7 +136,7 @@ class InvoicesActionsTest(TestCase):
                                   number='1111', expiry_month=12, expiry_year=11,
                                   psp_object=psp_credit_card)
         invoice = Invoice.objects.create(account=account)
-        Charge.objects.create(account=account, invoice=invoice, amount=Money(10, 'CHF'), description='a charge')
+        Charge.objects.create(account=account, invoice=invoice, amount=Money(10, 'CHF'), product_code='ACHARGE')
 
         with raises(invoices.PreconditionError, match='No valid credit card on account\.'):
             invoices.pay_with_account_credit_cards(invoice.pk)
@@ -110,7 +149,7 @@ class InvoicesActionsTest(TestCase):
                                   number='1111', expiry_month=12, expiry_year=30,
                                   psp_object=psp_credit_card)
         invoice = Invoice.objects.create(account=account)
-        Charge.objects.create(account=account, invoice=invoice, amount=Money(10, 'CHF'), description='a charge')
+        Charge.objects.create(account=account, invoice=invoice, amount=Money(10, 'CHF'), product_code='ACHARGE')
 
         payment = invoices.pay_with_account_credit_cards(invoice.pk)
         assert payment

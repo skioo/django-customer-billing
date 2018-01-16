@@ -3,12 +3,13 @@ State changes for accounts.
 
 Also, the account is the aggregate root for invoices and charges, so it's responsible for creating those.
 """
+from typing import Sequence, Union, Any
+
 from django.db import transaction
 from moneyed import Money
 from structlog import get_logger
-from typing import Sequence
 
-from ..models import Account, Charge, Invoice
+from ..models import Account, Charge, Invoice, ProductProperty
 
 logger = get_logger()
 
@@ -63,16 +64,36 @@ def create_invoices(account_id: str) -> Sequence[Invoice]:
     return invoices
 
 
-def add_charge(account_id: str, amount: Money, description: str) -> Charge:
+def add_charge(account_id: str, amount: Money, product_code: Union[str, None] = None, product_properties: Any = None,
+               ad_hoc_label: Union[str, None] = None) -> Charge:
     """
     Add a charge to the account.
 
     :param account_id: The account on which to add the charge
     :param amount:  The amount of the charge
-    :param description:  The description of the charge
+    :param product_code:
+    :param product_properties: A list of name, value pairs
+    :param ad_hoc_label:
     :return: The newly created charge
     """
-    logger.info('adding-charge', account_id=account_id, amount=amount, description=description)
-    return Charge.objects.create(account_id=account_id,
-                                 amount=amount,
-                                 description=description)
+    logger.info('adding-charge', account_id=account_id, amount=amount, product_code=product_code,
+                product_properties=product_properties, ad_hoc_label=ad_hoc_label)
+
+    with transaction.atomic():
+        charge = Charge(account_id=account_id,
+                        amount=amount)
+        if ad_hoc_label:
+            charge.ad_hoc_label = ad_hoc_label
+        if product_code:
+            charge.product_code = product_code
+
+        charge.full_clean(exclude=['id', 'account'])  # Exclude to avoid unnecessary db queries
+        charge.save(force_insert=True)
+
+        if product_properties:
+            objs = [ProductProperty(charge=charge, name=name, value=value) for (name, value) in product_properties]
+            for o in objs:
+                o.full_clean(exclude=['id', 'charge'])  # Exclude to avoid unnecessary db queries
+            ProductProperty.objects.bulk_create(objs)
+
+    return charge

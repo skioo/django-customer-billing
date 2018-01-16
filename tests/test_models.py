@@ -1,11 +1,14 @@
 from datetime import date
 
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from django.test import TestCase
 from django.utils.dateparse import parse_datetime
 from moneyed import Money
+from pytest import raises
 
-from billing.models import Account, Charge, CreditCard, Invoice, Transaction
+from billing.models import Account, Charge, CreditCard, Invoice, Transaction, ProductProperty
 from billing.total import Total
 from .models import MyPSPCreditCard, MyPSPPayment
 
@@ -36,15 +39,15 @@ class InvoiceTest(TestCase):
 
     def test_it_should_compute_the_invoice_total(self):
         invoice = Invoice.objects.create(account=self.account)
-        Charge.objects.create(account=self.account, invoice=invoice, amount=Money(10, 'CHF'), description='a charge')
-        Charge.objects.create(account=self.account, invoice=invoice, amount=Money(-3, 'CHF'), description='a credit')
+        Charge.objects.create(account=self.account, invoice=invoice, amount=Money(10, 'CHF'), product_code='ACHARGE')
+        Charge.objects.create(account=self.account, invoice=invoice, amount=Money(-3, 'CHF'), product_code='ACREDIT')
         with self.assertNumQueries(1):
             assert invoice.total() == Total(7, 'CHF')
 
     def test_it_should_compute_the_invoice_total_in_multiple_currencies(self):
         invoice = Invoice.objects.create(account=self.account)
-        Charge.objects.create(account=self.account, invoice=invoice, amount=Money(10, 'CHF'), description='a charge')
-        Charge.objects.create(account=self.account, invoice=invoice, amount=Money(-3, 'EUR'), description='a credit')
+        Charge.objects.create(account=self.account, invoice=invoice, amount=Money(10, 'CHF'), product_code='ACHARGE')
+        Charge.objects.create(account=self.account, invoice=invoice, amount=Money(-3, 'EUR'), product_code='ACREDIT')
         with self.assertNumQueries(1):
             assert invoice.total() == Total(10, 'CHF', -3, 'EUR')
 
@@ -103,16 +106,16 @@ class AccountTest(TestCase):
     def test_it_should_filter_accounts_with_uninvoiced_charges(self):
         account1 = Account.objects.create(owner=self.user, currency='CHF')
         invoice1 = Invoice.objects.create(account=account1)
-        Charge.objects.create(account=account1, amount=Money(10, 'CHF'), description='a charge',
+        Charge.objects.create(account=account1, amount=Money(10, 'CHF'), product_code='ACHARGE',
                               invoice=invoice1)
 
         user2 = User.objects.create_user('a-username-2')
         account2 = Account.objects.create(owner=user2, currency='EUR', status=Account.CLOSED)
-        Charge.objects.create(account=account2, amount=Money(10, 'CHF'), description='a charge')
+        Charge.objects.create(account=account2, amount=Money(10, 'CHF'), product_code='ACHARGE')
 
         user3 = User.objects.create_user('a-username-3')
         account3 = Account.objects.create(owner=user3, currency='EUR')
-        Charge.objects.create(account=account3, amount=Money(10, 'CHF'), description='a charge')
+        Charge.objects.create(account=account3, amount=Money(10, 'CHF'), product_code='ACHARGE')
 
         user4 = User.objects.create_user('a-username-4')
         Account.objects.create(owner=user4, currency='EUR')
@@ -124,8 +127,8 @@ class AccountTest(TestCase):
 
     def test_it_should_compute_the_account_balance(self):
         account = Account.objects.create(owner=self.user, currency='CHF')
-        Charge.objects.create(account=account, amount=Money(10, 'CHF'), description='a charge')
-        Charge.objects.create(account=account, amount=Money(-3, 'CHF'), description='a credit')
+        Charge.objects.create(account=account, amount=Money(10, 'CHF'), product_code='ACHARGE')
+        Charge.objects.create(account=account, amount=Money(-3, 'CHF'), product_code='ACREDIT')
         psp_payment = MyPSPPayment(payment_ref='apaymentref')
         Transaction.objects.create(account=account, amount=Money(6, 'CHF'), success=True,
                                    payment_method='VIS', credit_card_number='4111 1111 1111 1111',
@@ -135,7 +138,7 @@ class AccountTest(TestCase):
 
     def test_unsuccessful_transactions_should_not_impact_the_balance(self):
         account = Account.objects.create(owner=self.user, currency='CHF')
-        Charge.objects.create(account=account, amount=Money(10, 'CHF'), description='a charge')
+        Charge.objects.create(account=account, amount=Money(10, 'CHF'), product_code='ACHARGE')
         psp_payment = MyPSPPayment(payment_ref='apaymentref')
         Transaction.objects.create(account=account, amount=Money(6, 'CHF'), success=False,
                                    payment_method='VIS', credit_card_number='4111 1111 1111 1111',
@@ -145,18 +148,18 @@ class AccountTest(TestCase):
 
     def test_balance_as_of_date_should_ignore_more_recent_charges(self):
         account = Account.objects.create(owner=self.user, currency='CHF')
+        old_charge = Charge.objects.create(account=account, amount=Money(5, 'CHF'), product_code='OLD')
         # It's not possible to prevent auto-add-now from setting the current time, so we do 2 steps
-        old_charge = Charge.objects.create(account=account, amount=Money(5, 'CHF'), description='old charge')
         old_charge.created = parse_datetime('2015-01-01T00:00:00Z')
         old_charge.save()
-        Charge.objects.create(account=account, amount=Money(10, 'CHF'), description='today charge')
+        Charge.objects.create(account=account, amount=Money(10, 'CHF'), product_code='TODAY')
         with self.assertNumQueries(2):
             assert account.balance(as_of=parse_datetime('2016-06-06T00:00:00Z')) == Total([Money(-5, 'CHF')])
 
     def test_it_should_compute_the_account_balance_in_multiple_currencies(self):
         account = Account.objects.create(owner=self.user, currency='CHF')
-        Charge.objects.create(account=account, amount=Money(10, 'CHF'), description='a charge')
-        Charge.objects.create(account=account, amount=Money(-3, 'EUR'), description='a credit')
+        Charge.objects.create(account=account, amount=Money(10, 'CHF'), product_code='ACHARGE')
+        Charge.objects.create(account=account, amount=Money(-3, 'EUR'), product_code='ACREDIT')
         with self.assertNumQueries(2):
             assert account.balance() == Total(-10, 'CHF', 3, 'EUR')
 
@@ -167,24 +170,71 @@ class ChargeTest(TestCase):
         self.account = Account.objects.create(owner=user, currency='CHF')
 
     def test_uninvoiced_charges_should_ignore_invoiced_charges(self):
-        Charge.objects.create(account=self.account, invoice_id=1, amount=Money(10, 'CHF'), description='a charge')
+        Charge.objects.create(account=self.account, invoice_id=1, amount=Money(10, 'CHF'), product_code='ACHARGE')
         with self.assertNumQueries(2):
             uc, total = Charge.objects.uninvoiced_with_total(account_id=self.account.pk)
             assert uc == []
             assert total == Total()
 
     def test_uninvoiced_charges_should_consider_credits(self):
-        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), description='a charge')
-        Charge.objects.create(account=self.account, amount=Money(-30, 'CHF'), description='a credit')
+        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
+        Charge.objects.create(account=self.account, amount=Money(-30, 'CHF'), product_code='ACREDIT')
         with self.assertNumQueries(2):
             uc, total = Charge.objects.uninvoiced_with_total(account_id=self.account.pk)
             assert len(uc) == 2
             assert total == Total(-20, 'CHF')
 
     def test_uninvoiced_charges_can_be_in_multiple_currencies(self):
-        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), description='a charge')
-        Charge.objects.create(account=self.account, amount=Money(-30, 'EUR'), description='a credit')
+        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
+        Charge.objects.create(account=self.account, amount=Money(-30, 'EUR'), product_code='ACREDIT')
         with self.assertNumQueries(2):
             uc, total = Charge.objects.uninvoiced_with_total(account_id=self.account.pk)
             assert len(uc) == 2
             assert total == Total(10, 'CHF', -30, 'EUR')
+
+    def test_it_can_create_charge_with_both_ad_hoc_label_and_product_code(self):
+        charge = Charge.objects.create(account=self.account, amount=Money(10, 'CHF'),
+                                       product_code='ACHARGE', ad_hoc_label='hai')
+        charge.full_clean()
+
+    def test_it_must_have_ad_hoc_code_or_product_code(self):
+        charge = Charge.objects.create(account=self.account, amount=Money(10, 'CHF'))
+        with raises(ValidationError):
+            charge.full_clean()
+
+    def test_it_can_create_product_properties(self):
+        charge = Charge.objects.create(account=self.account, amount=Money(10, 'CHF'),
+                                       product_code='ACHARGE')
+        charge.product_properties.create(name='color', value='blue')
+        charge.full_clean()
+
+        # Now read back from the db
+        retrieved = Charge.objects.all()[0]
+        assert retrieved.product_properties.count() == 1
+        assert retrieved.product_properties.all()[0].name == 'color'
+
+
+class ProductPropertyTest(TestCase):
+    def setUp(self):
+        user = User.objects.create_user('a-username')
+        account = Account.objects.create(owner=user, currency='CHF')
+        self.charge = Charge.objects.create(account=account, amount=Money(10, 'CHF'), product_code='ACHARGE')
+
+    def test_it_can_set_product_properties(self):
+        ProductProperty.objects.create(charge=self.charge, name='color', value='blue')
+        ProductProperty.objects.create(charge=self.charge, name='size', value='10')
+
+    def test_it_cannot_redefine_a_property(self):
+        ProductProperty.objects.create(charge=self.charge, name='color', value='blue')
+        with raises(IntegrityError):
+            ProductProperty.objects.create(charge=self.charge, name='color', value='red')
+
+    def test_it_cannot_use_an_empty_property_name(self):
+        p = ProductProperty.objects.create(charge=self.charge, name='', value='red')
+        with raises(ValidationError):
+            p.full_clean()
+
+    def test_name_should_start_with_a_letter(self):
+        p = ProductProperty.objects.create(charge=self.charge, name='1', value='red')
+        with raises(ValidationError):
+            p.full_clean()
