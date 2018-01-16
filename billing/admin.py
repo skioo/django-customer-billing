@@ -2,7 +2,7 @@ from datetime import datetime
 
 from django.conf.urls import url
 from django.contrib import admin
-from django.db.models import Max
+from django.db.models import Max, Count, Q
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.utils.html import format_html
@@ -167,12 +167,12 @@ class CreditCardInline(admin.TabularInline):
 # Charges
 
 def charge_invoice(charge):
-    i = charge.invoice
-    if i is None:
+    invoice_id = charge.invoice_id
+    if invoice_id is None:
         return _('Uninvoiced')
     else:
-        text = str(i)
-        url = reverse('admin:billing_invoice_change', args=(i.pk,))
+        text = '#{}'.format(invoice_id)
+        url = reverse('admin:billing_invoice_change', args=(invoice_id,))
         return format_html('<a href="{}">{}</a>', url, text)
 
 
@@ -215,10 +215,12 @@ class ChargeInline(admin.TabularInline):
 # Transactions
 
 def transaction_invoice(transaction):
-    i = transaction.invoice
-    if i is not None:
-        text = str(i)
-        url = reverse('admin:billing_invoice_change', args=(i.pk,))
+    invoice_id = transaction.invoice_id
+    if invoice_id is None:
+        return _('Uninvoiced')
+    else:
+        text = '#{}'.format(invoice_id)
+        url = reverse('admin:billing_invoice_change', args=(invoice_id,))
         return format_html('<a href="{}">{}</a>', url, text)
 
 
@@ -306,7 +308,6 @@ class InvoiceAdmin(AppendOnlyModelAdmin):
     def get_queryset(self, request):
         return super().get_queryset(request) \
             .select_related('account__owner') \
-            .prefetch_related('transactions') \
             .annotate(last_transaction=Max('transactions__created'))
 
     def get_urls(self):
@@ -348,8 +349,8 @@ class AccountRatingFilter(admin.SimpleListFilter):
             return queryset.filter(invoices__status=Invoice.PAST_DUE)
 
 
-def punctual(self):
-    return not self.has_past_due_invoices()
+def punctual(obj):
+    return obj.past_due_invoice_count == 0
 
 
 punctual.boolean = True  # type: ignore
@@ -397,3 +398,7 @@ class AccountAdmin(AppendOnlyModelAdmin):
             )
         ]
         return my_urls + urls
+
+    def get_queryset(self, request):
+        return super().get_queryset(request) \
+            .annotate(past_due_invoice_count=Count('invoices', filter=Q(status=Invoice.PAST_DUE)))
