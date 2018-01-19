@@ -30,7 +30,7 @@ class InvoiceTest(TestCase):
         invoice1 = Invoice.objects.create(account=self.account, status=Invoice.PENDING)
         invoice2 = Invoice.objects.create(account=self.account, status=Invoice.PAST_DUE)
         Invoice.objects.create(account=self.account, status=Invoice.CANCELLED)
-        Invoice.objects.create(account=self.account, status=Invoice.PAYED)
+        Invoice.objects.create(account=self.account, status=Invoice.PAID)
         with self.assertNumQueries(1):
             payable_invoices = Invoice.objects.payable().order_by('status')
             assert len(payable_invoices) == 2

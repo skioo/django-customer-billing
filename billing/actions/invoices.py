@@ -1,6 +1,7 @@
+from typing import Optional
+
 from django.db import transaction
 from structlog import get_logger
-from typing import Optional
 
 from .. import psp
 from ..models import CreditCard, Invoice, Transaction
@@ -14,9 +15,9 @@ class PreconditionError(Exception):
 
 def pay_with_account_credit_cards(invoice_id) -> Optional[Transaction]:
     """
-    Get payed for the invoice, trying the valid credit cards on record for the account.
+    Get paid for the invoice, trying the valid credit cards on record for the account.
 
-    If successful attaches the payment to the invoice and marks the invoice as payed.
+    If successful attaches the payment to the invoice and marks the invoice as paid.
 
     :param invoice_id: the id of the invoice to pay.
     :return: A successful transaction, or None if we weren't able to pay the invoice.

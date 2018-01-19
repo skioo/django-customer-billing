@@ -90,12 +90,12 @@ class InvoiceManager(models.Manager):
 class Invoice(Model):
     PENDING = 'PENDING'
     PAST_DUE = 'PAST_DUE'
-    PAYED = 'PAYED'
+    PAID = 'PAID'
     CANCELLED = 'CANCELLED'
     STATUS_CHOICES = (
         (PENDING, _('Pending')),
         (PAST_DUE, _('Past-due')),
-        (PAYED, _('Payed')),
+        (PAID, _('Paid')),
         (CANCELLED, _('Cancelled')),
     )
     account = models.ForeignKey(Account, related_name='invoices', on_delete=PROTECT)
@@ -109,7 +109,7 @@ class Invoice(Model):
     def mark_past_due(self):
         pass
 
-    @transition(field=status, source=[PENDING, PAST_DUE], target=PAYED)
+    @transition(field=status, source=[PENDING, PAST_DUE], target=PAID)
     def pay(self):
         pass
 

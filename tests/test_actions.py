@@ -120,12 +120,12 @@ class InvoicesActionsTest(TestCase):
         with raises(invoices.PreconditionError, match='Cannot pay empty invoice\.'):
             invoices.pay_with_account_credit_cards(invoice.pk)
 
-    def test_it_should_prevent_paying_an_already_payed_invoice(self):
+    def test_it_should_prevent_paying_an_already_paid_invoice(self):
         user = User.objects.create_user('a-username')
         account = Account.objects.create(owner=user, currency='CHF')
-        invoice = Invoice.objects.create(account=account, status=Invoice.PAYED)
+        invoice = Invoice.objects.create(account=account, status=Invoice.PAID)
 
-        with raises(invoices.PreconditionError, match='Cannot pay invoice with status PAYED\.'):
+        with raises(invoices.PreconditionError, match='Cannot pay invoice with status PAID\.'):
             invoices.pay_with_account_credit_cards(invoice.pk)
 
     def test_it_should_not_attempt_payment_when_no_valid_credit_card(self):
@@ -156,7 +156,7 @@ class InvoicesActionsTest(TestCase):
         assert payment.success
 
         invoice.refresh_from_db()
-        assert invoice.status == Invoice.PAYED
+        assert invoice.status == Invoice.PAID
         assert invoice.transactions.count() == 1
         assert invoice.transactions.first() == payment
 

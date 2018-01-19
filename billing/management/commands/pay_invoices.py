@@ -46,7 +46,7 @@ class Stats:
         self._error = 0
 
     def success(self, invoice):
-        logging.debug('Invoice %s, payed with cc', invoice)
+        logging.debug('Invoice %s, paid with cc', invoice)
         self._success += 1
 
     def failure(self, invoice):

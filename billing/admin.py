@@ -226,7 +226,8 @@ class ChargeAdmin(AppendOnlyModelAdmin):
 class ChargeInline(admin.TabularInline):
     verbose_name_plural = 'Charges and Credits'
     model = Charge
-    fields = readonly_fields = ['type', 'product_code', created_on, charge_invoice, amount, product_properties]
+    fields = readonly_fields = ['type', created_on, charge_invoice, amount, 'product_code', product_properties,
+                                'ad_hoc_label']
     show_change_link = True
     can_delete = False
     extra = 0
