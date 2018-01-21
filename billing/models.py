@@ -82,6 +82,7 @@ class Account(Model):
 
 ########################################################################################################
 
+
 class InvoiceManager(models.Manager):
     def payable(self) -> QuerySet:
         return Invoice.objects.filter(status__in=[Invoice.PENDING, Invoice.PAST_DUE])
@@ -130,11 +131,16 @@ class Invoice(Model):
 
 ########################################################################################################
 
+
 product_code_validator = RegexValidator(regex=r'^[A-Z0-9]{4,8}$',
                                         message='Between 4 and 8 uppercase letters or digits')
 
 
 class ChargeManager(models.Manager):
+
+    def get_queryset(self):
+        return super().get_queryset().exclude(deleted=True)
+
     def uninvoiced_with_total(self, account_id: str) -> Tuple[List, Total]:
         uc = Charge.objects.filter(invoice=None, account_id=account_id)
         return list(uc), total_amount(uc)
@@ -156,8 +162,12 @@ class Charge(Model):
     ad_hoc_label = models.TextField(blank=True, help_text='When not empty, this is shown verbatim to the user.')
     product_code = models.CharField(max_length=8, blank=True, validators=[product_code_validator], db_index=True,
                                     help_text='Identifies the kind of product being charged or credited')
+    reverses = models.OneToOneField('self', null=True, blank=True, related_name='reversed_by', on_delete=PROTECT)
+    deleted = models.BooleanField(default=False)
 
     objects = ChargeManager()
+
+    all_charges = models.Manager()  # Includes deleted charges
 
     def clean(self):
         if not (self.ad_hoc_label or self.product_code):
@@ -170,10 +180,6 @@ class Charge(Model):
             return _('Charge')
         else:
             return _('Credit')
-
-    @property
-    def is_invoiced(self):
-        return self.invoice is not None
 
 
 product_property_name_validator = RegexValidator(regex=r'^[a-z]\w*$',

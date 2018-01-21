@@ -67,7 +67,7 @@ class ChargeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Charge
-        exclude = ['account']
+        exclude = ['account', 'deleted', 'reverses']
 
 
 class TransactionSerializer(serializers.ModelSerializer):

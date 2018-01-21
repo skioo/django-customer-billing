@@ -51,6 +51,7 @@
   "model": "billing.charge", "pk": "4b312d25-3567-42d2-acce-e77b3d422479", "fields": {
     "created": "2017-10-21T08:49:27.746Z",
     "modified": "2017-10-22T22:22:22.090Z",
+    "deleted": false,
     "account": "016e8ed0-8786-4ffc-b5e0-bf2b919c8d2b", "invoice": 1,
     "amount_currency": "USD", "amount": "15.00", "product_code": "APRODUCT",
     "ad_hoc_label": "some handcrafted label"
@@ -59,6 +60,7 @@
   "model": "billing.charge", "pk": "d98e1970-e9d9-4916-bfdf-6f59f12dbd88", "fields": {
     "created": "2017-10-21T11:19:13.504Z",
     "modified": "2017-10-22T22:22:22.090Z",
+    "deleted": false,
     "account": "c8674163-9306-49ee-95ed-17860def82a4", "invoice": null,
     "amount_currency": "CHF", "amount": "33.00", "product_code": "BPRODUCT"
   }

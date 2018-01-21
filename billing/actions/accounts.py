@@ -3,7 +3,7 @@ State changes for accounts.
 
 Also, the account is the aggregate root for invoices and charges, so it's responsible for creating those.
 """
-from typing import Sequence, Union, Any
+from typing import Sequence, Any, Optional
 
 from django.db import transaction
 from moneyed import Money
@@ -64,14 +64,16 @@ def create_invoices(account_id: str) -> Sequence[Invoice]:
     return invoices
 
 
-def add_charge(account_id: str, amount: Money, product_code: Union[str, None] = None, product_properties: Any = None,
-               ad_hoc_label: Union[str, None] = None) -> Charge:
+def add_charge(account_id: str, amount: Money,
+               reverses_id: Optional[str] = None,
+               product_code: Optional[str] = None, product_properties: Any = None,
+               ad_hoc_label: Optional[str] = None) -> Charge:
     """
     Add a charge to the account.
 
     :param account_id: The account on which to add the charge
     :param amount:  The amount of the charge
-    :param product_code:
+    :param product_code: A code identifying the type of product cnarged
     :param product_properties: A list of name, value pairs
     :param ad_hoc_label:
     :return: The newly created charge
@@ -82,6 +84,8 @@ def add_charge(account_id: str, amount: Money, product_code: Union[str, None] = 
     with transaction.atomic():
         charge = Charge(account_id=account_id,
                         amount=amount)
+        if reverses_id:
+            charge.reverses_id = reverses_id
         if ad_hoc_label:
             charge.ad_hoc_label = ad_hoc_label
         if product_code:

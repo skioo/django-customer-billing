@@ -192,6 +192,14 @@ class ChargeTest(TestCase):
             assert len(uc) == 2
             assert total == Total(10, 'CHF', -30, 'EUR')
 
+    def test_uninvoiced_charges_should_ignore_deleted_charges(self):
+        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
+        Charge.objects.create(account=self.account, deleted=True, amount=Money(5, 'CHF'), product_code='BCHARGE')
+        with self.assertNumQueries(2):
+            uc, total = Charge.objects.uninvoiced_with_total(account_id=self.account.pk)
+            assert len(uc) == 1
+            assert total == Total(10, 'CHF')
+
     def test_it_can_create_charge_with_both_ad_hoc_label_and_product_code(self):
         charge = Charge.objects.create(account=self.account, amount=Money(10, 'CHF'),
                                        product_code='ACHARGE', ad_hoc_label='hai')
@@ -203,15 +211,22 @@ class ChargeTest(TestCase):
             charge.full_clean()
 
     def test_it_can_create_product_properties(self):
-        charge = Charge.objects.create(account=self.account, amount=Money(10, 'CHF'),
-                                       product_code='ACHARGE')
+        charge = Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
         charge.product_properties.create(name='color', value='blue')
         charge.full_clean()
-
         # Now read back from the db
         retrieved = Charge.objects.all()[0]
         assert retrieved.product_properties.count() == 1
         assert retrieved.product_properties.all()[0].name == 'color'
+
+    def test_it_can_mark_charge_as_deleted(self):
+        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'),
+                              product_code='ACHARGE', deleted=True)
+
+    def test_it_can_reverse(self):
+        the_charge = Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
+        Charge.objects.create(account=self.account, amount=Money(-10, 'CHF'), product_code='REVERSAL',
+                              reverses=the_charge)
 
 
 class ProductPropertyTest(TestCase):

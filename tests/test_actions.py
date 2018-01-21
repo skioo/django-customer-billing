@@ -5,7 +5,7 @@ from django.test import TestCase
 from moneyed import Money
 from pytest import raises
 
-from billing.actions import accounts, invoices, credit_cards
+from billing.actions import accounts, invoices, credit_cards, charges
 from billing.models import Account, Charge, CreditCard, Invoice
 from billing.psp import register, unregister
 from billing.total import Total
@@ -191,3 +191,41 @@ class CreditCardActionsTest(TestCase):
     def test_it_cannot_reactivate_an_active_credit_card(self):
         with raises(Exception):
             credit_cards.reactivate(self.cc.id)
+
+
+class ChargeActionsTest(TestCase):
+    def setUp(self):
+        user = User.objects.create_user('a-username')
+        self.account = Account.objects.create(owner=user, currency='CHF')
+
+    def test_it_should_delete_uninvoiced_charge(self):
+        charge = Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='10CHF')
+        charges.cancel_charge(charge.pk)
+        # Check in db
+        retrieved = Charge.all_charges.all()[0]
+        assert retrieved.deleted
+
+    def test_it_should_create_reversal_credit_for_invoiced_charge(self):
+        invoice = Invoice.objects.create(account=self.account)
+        charge = Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='10CHF',
+                                       invoice=invoice)
+        charges.cancel_charge(charge.pk)
+        # Check in db
+        reversal = Charge.objects.exclude(pk=charge.pk).get()
+        assert reversal.account == self.account
+        assert reversal.amount == Money(-10, 'CHF')
+        assert reversal.product_code == 'REVERSAL'
+        assert reversal.reverses == charge
+
+    def test_it_should_forbid_cancelling_a_deleted_charge(self):
+        charge = Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='10CHF',
+                                       deleted=True)
+        with raises(charges.ChargeAlreadyCancelledError, match='Cannot cancel deleted charge.'):
+            charges.cancel_charge(charge.pk)
+
+    def test_it_should_forbid_cancelling_a_reversed_charge(self):
+        charge = Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='10CHF')
+        Charge.objects.create(account=self.account, amount=Money(-10, 'CHF'), product_code='REVERSAL',
+                              reverses=charge)
+        with raises(charges.ChargeAlreadyCancelledError, match='Cannot cancel reversed charge.'):
+            charges.cancel_charge(charge.pk)

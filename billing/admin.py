@@ -181,6 +181,17 @@ charge_invoice.short_description = 'Invoice'  # type: ignore
 charge_invoice.admin_order_field = 'invoice'  # type: ignore
 
 
+def charge_deleted(charge):
+    return charge.deleted
+
+
+charge_deleted.short_description = 'Deleted?'  # type: ignore
+
+charge_deleted.admin_order_field = 'deleted'  # type: ignore
+
+charge_deleted.boolean = False  # type: ignore
+
+
 class ProductPropertyInline(admin.TabularInline):
     model = ProductProperty
     verbose_name_plural = 'Product props'
@@ -198,27 +209,23 @@ product_properties.short_description = 'Product props'  # type: ignore
 class ChargeAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
     list_display = ['type', 'account', 'product_code', product_properties, 'ad_hoc_label', created_on, modified_on,
-                    charge_invoice,
-                    amount]
+                    charge_invoice, amount, charge_deleted]
     search_fields = ['amount', 'amount_currency', 'product_code', 'product_properties__value', 'ad_hoc_label',
                      'invoice__id'] + account_owner_search_fields
-    list_filter = ['amount_currency']
+    list_filter = ['amount_currency', 'deleted']
     ordering = ['-created']
     list_select_related = True
 
-    raw_id_fields = ['account']
+    raw_id_fields = ['account', 'reverses']
     readonly_fields = ['created', 'modified']
     inlines = [ProductPropertyInline]
 
-    def has_delete_permission(self, request, obj=None):
-        if request.user.is_superuser:
-            return True
-        if obj is not None and not obj.is_invoiced:
-            return True
-        return False
-
     def get_queryset(self, request):
-        return super().get_queryset(request) \
+        qs = Charge.all_charges
+        ordering = self.get_ordering(request)
+        if ordering:
+            qs = qs.order_by(*ordering)
+        return qs \
             .prefetch_related('invoice') \
             .prefetch_related('product_properties')
 
