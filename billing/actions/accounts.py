@@ -69,8 +69,7 @@ def create_invoices(account_id: str) -> Sequence[Invoice]:
 def add_charge(account_id: str, amount: Money,
                reverses_id: Optional[str] = None,
                product_code: Optional[str] = None,
-               product_properties: Optional[Dict[str, str]] = None,
-               ad_hoc_label: Optional[str] = None) -> Charge:
+               product_properties: Optional[Dict[str, str]] = None) -> Charge:
     """
     Add a charge to the account.
 
@@ -82,15 +81,13 @@ def add_charge(account_id: str, amount: Money,
     :return: The newly created charge
     """
     logger.info('adding-charge', account_id=account_id, amount=amount, product_code=product_code,
-                product_properties=product_properties, ad_hoc_label=ad_hoc_label)
+                product_properties=product_properties)
 
     with transaction.atomic():
         charge = Charge(account_id=account_id,
                         amount=amount)
         if reverses_id:
             charge.reverses_id = reverses_id
-        if ad_hoc_label:
-            charge.ad_hoc_label = ad_hoc_label
         if product_code:
             charge.product_code = product_code
         charge.full_clean(exclude=['id', 'account'])  # Exclude to avoid unnecessary db queries
