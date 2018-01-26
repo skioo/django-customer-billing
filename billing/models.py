@@ -132,8 +132,8 @@ class Invoice(Model):
 ########################################################################################################
 
 
-product_code_validator = RegexValidator(regex=r'^[A-Z0-9]{4,8}$',
-                                        message='Between 4 and 8 uppercase letters or digits')
+product_code_validator = RegexValidator(regex=r'^[A-Z0-9]{4,10}$',
+                                        message='Between 4 and 10 uppercase letters or digits')
 
 
 class ChargeManager(models.Manager):
@@ -160,7 +160,7 @@ class Charge(Model):
     invoice = models.ForeignKey(Invoice, null=True, blank=True, related_name='items', on_delete=PROTECT)
     amount = MoneyField(max_digits=12, decimal_places=2)
     ad_hoc_label = models.TextField(blank=True, help_text='When not empty, this is shown verbatim to the user.')
-    product_code = models.CharField(max_length=8, blank=True, validators=[product_code_validator], db_index=True,
+    product_code = models.CharField(max_length=10, blank=True, validators=[product_code_validator], db_index=True,
                                     help_text='Identifies the kind of product being charged or credited')
     reverses = models.OneToOneField('self', null=True, blank=True, related_name='reversed_by', on_delete=PROTECT)
     deleted = models.BooleanField(default=False)
