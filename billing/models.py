@@ -191,7 +191,7 @@ class ProductProperty(Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created = models.DateTimeField(auto_now_add=True, db_index=True)
     modified = models.DateTimeField(auto_now=True)
-    charge = models.ForeignKey(Charge, on_delete=PROTECT, related_name='product_properties')
+    charge = models.ForeignKey(Charge, on_delete=CASCADE, related_name='product_properties')
     name = models.CharField(max_length=100, validators=[product_property_name_validator])
     value = models.CharField(max_length=255, blank=True)
 
