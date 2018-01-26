@@ -56,10 +56,19 @@ class CreditCardViewSet(ListModelMixin, RetrieveModelMixin, UpdateModelMixin, Ge
 
 ########################################################################################################
 
+
+class ProductPropertyListSerializer(serializers.ListSerializer):
+    # From: https://stackoverflow.com/questions/31583445
+    def to_representation(self, data):
+        r = super().to_representation(data)
+        return {item['name']: item['value'] for item in r}
+
+
 class ProductPropertySerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductProperty
         fields = ['name', 'value']
+        list_serializer_class = ProductPropertyListSerializer
 
 
 class ChargeSerializer(serializers.ModelSerializer):

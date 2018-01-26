@@ -43,7 +43,7 @@ class AccountViewTest(TestCase):
                     'invoice': 1,
                     'ad_hoc_label': 'some handcrafted label',
                     'product_code': 'APRODUCT',
-                    'product_properties': [],
+                    'product_properties': {},
                     'amount': '15.00',
                     'amount_currency': 'USD'
                 }
@@ -85,10 +85,10 @@ class AccountViewTest(TestCase):
             'amount': '33.00',
             'ad_hoc_label': '',
             'product_code': 'BPRODUCT',
-            'product_properties': [
-                {'name': 'color', 'value': 'blue'},
-                {'name': 'size', 'value': 'medium'}
-            ],
+            'product_properties': {
+                'color': 'blue',
+                'size': 'medium'
+            },
             'invoice': None
         }
 

@@ -1,6 +1,5 @@
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError
 from django.test import TestCase
 from moneyed import Money
 from pytest import raises
@@ -18,17 +17,13 @@ class AccountActionsTest(TestCase):
         user = User.objects.create_user('a-username')
         self.account = Account.objects.create(owner=user, currency='CHF')
 
-    def test_it_cannot_create_charge_with_missing_attributes(self):
-        with raises(ValidationError):
-            accounts.add_charge(account_id=self.account.id, amount=Money(10, 'CHF'))
-
     def test_it_should_add_charge(self):
         with self.assertNumQueries(4):
             accounts.add_charge(
                 account_id=self.account.id,
                 amount=Money(10, 'CHF'),
                 product_code='PRODUCTA',
-                product_properties=[('color', 'blue'), ('fabric', 'cotton'), ('size', 'M')])
+                product_properties={'color': 'blue', 'fabric': 'cotton', 'size': 'M'})
 
         # Now verify what's been written to the db
         retrieved = Charge.objects.all()[0]
@@ -39,21 +34,17 @@ class AccountActionsTest(TestCase):
             'size': 'M'
         }
 
+    def test_it_cannot_create_charge_without_label_or_product_code(self):
+        with raises(ValidationError):
+            accounts.add_charge(account_id=self.account.id, amount=Money(10, 'CHF'))
+
     def test_it_should_not_add_charge_if_invalid_property_name(self):
         with raises(ValidationError):
             accounts.add_charge(
                 account_id=self.account.id,
                 amount=Money(10, 'CHF'),
                 product_code='PRODUCTA',
-                product_properties=[('123', 'blue')])
-
-    def test_it_should_not_add_charge_if_duplicate_property_names(self):
-        with raises(IntegrityError):
-            accounts.add_charge(
-                account_id=self.account.id,
-                amount=Money(10, 'CHF'),
-                product_code='PRODUCTA',
-                product_properties=[('color', 'blue'), ('color', 'red')])
+                product_properties={'123': 'blue'})
 
     def test_it_should_not_create_invoice_when_money_is_owed_to_the_user(self):
         Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')

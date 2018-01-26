@@ -1,9 +1,11 @@
 """
 State changes for accounts.
 
-Also, the account is the aggregate root for invoices and charges, so it's responsible for creating those.
+Also, the account is the aggregate root for invoices and charges,
+so the creation of those is managed here.
+
 """
-from typing import Sequence, Any, Optional
+from typing import Dict, Optional, Sequence
 
 from django.db import transaction
 from moneyed import Money
@@ -66,7 +68,8 @@ def create_invoices(account_id: str) -> Sequence[Invoice]:
 
 def add_charge(account_id: str, amount: Money,
                reverses_id: Optional[str] = None,
-               product_code: Optional[str] = None, product_properties: Any = None,
+               product_code: Optional[str] = None,
+               product_properties: Optional[Dict[str, str]] = None,
                ad_hoc_label: Optional[str] = None) -> Charge:
     """
     Add a charge to the account.
@@ -74,7 +77,7 @@ def add_charge(account_id: str, amount: Money,
     :param account_id: The account on which to add the charge
     :param amount:  The amount of the charge
     :param product_code: A code identifying the type of product cnarged
-    :param product_properties: A list of name, value pairs
+    :param product_properties: A dict of hames and values.
     :param ad_hoc_label:
     :return: The newly created charge
     """
@@ -90,12 +93,11 @@ def add_charge(account_id: str, amount: Money,
             charge.ad_hoc_label = ad_hoc_label
         if product_code:
             charge.product_code = product_code
-
         charge.full_clean(exclude=['id', 'account'])  # Exclude to avoid unnecessary db queries
         charge.save(force_insert=True)
 
         if product_properties:
-            objs = [ProductProperty(charge=charge, name=name, value=value) for (name, value) in product_properties]
+            objs = [ProductProperty(charge=charge, name=k, value=v) for k, v in product_properties.items()]
             for o in objs:
                 o.full_clean(exclude=['id', 'charge'])  # Exclude to avoid unnecessary db queries
             ProductProperty.objects.bulk_create(objs)
