@@ -253,3 +253,11 @@ class ProductPropertyTest(TestCase):
         p = ProductProperty.objects.create(charge=self.charge, name='1', value='red')
         with raises(ValidationError):
             p.full_clean()
+
+    def test_property_value_cannot_be_none(self):
+        with raises(IntegrityError):
+            ProductProperty.objects.create(charge=self.charge, name='color', value=None)
+
+    def test_property_value_can_be_empty(self):
+        p = ProductProperty.objects.create(charge=self.charge, name='remark', value='')
+        p.full_clean()

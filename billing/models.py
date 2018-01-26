@@ -193,7 +193,7 @@ class ProductProperty(Model):
     modified = models.DateTimeField(auto_now=True)
     charge = models.ForeignKey(Charge, on_delete=PROTECT, related_name='product_properties')
     name = models.CharField(max_length=100, validators=[product_property_name_validator])
-    value = models.CharField(max_length=255)
+    value = models.CharField(max_length=255, blank=True)
 
     class Meta:
         unique_together = ['charge', 'name']

@@ -87,7 +87,8 @@ class AccountViewTest(TestCase):
             'product_code': 'BPRODUCT',
             'product_properties': {
                 'color': 'blue',
-                'size': 'medium'
+                'size': 'medium',
+                'remark': ''
             },
             'invoice': None
         }

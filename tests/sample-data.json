@@ -77,6 +77,12 @@
     "name": "size", "value": "medium"
   }
 }, {
+  "model": "billing.productproperty", "pk": "a583e6c1-8888-4ea6-afbb-5a3ee57c7857", "fields": {
+    "created": "2018-01-17T07:11:35.520Z", "modified": "2018-01-17T07:11:35.520Z",
+    "charge": "d98e1970-e9d9-4916-bfdf-6f59f12dbd88",
+    "name": "remark", "value": ""
+  }
+}, {
   "model": "billing.transaction", "pk": "0d21a825-8133-4203-88d2-3ea01180084b", "fields": {
     "created": "2017-10-21T09:53:58.661Z",
     "modified": "2017-10-22T22:22:22.090Z",
