@@ -101,6 +101,31 @@ def psp_admin_link(obj):
 psp_admin_link.short_description = 'PSP Object'  # type: ignore
 
 
+def link_to_account(obj):
+    account = obj.account
+    text = str(account)
+    url = reverse('admin:billing_account_change', args=(account.pk,))
+    return format_html('<a href="{}">{}</a>', url, text)
+
+
+link_to_account.admin_order_field = 'account'  # type: ignore
+link_to_account.short_description = 'Account'  # type: ignore
+
+
+def link_to_invoice(obj):
+    invoice_id = obj.invoice_id
+    if invoice_id is None:
+        return '-'
+    else:
+        text = '#{}'.format(invoice_id)
+        url = reverse('admin:billing_invoice_change', args=(invoice_id,))
+        return format_html('<a href="{}">{}</a>', url, text)
+
+
+link_to_invoice.admin_order_field = 'invoice'  # type: ignore
+link_to_invoice.short_description = 'Invoice'  # type: ignore
+
+
 ##############################################################
 # Credit Cards
 
@@ -142,7 +167,7 @@ credit_card_is_valid.short_description = 'valid'  # type: ignore
 @admin.register(CreditCard)
 class CreditCardAdmin(ReadOnlyModelAdmin):
     date_hierarchy = 'created'
-    list_display = ['account', created_on, modified_on, 'status', 'type', 'number', credit_card_expiry,
+    list_display = ['number', created_on, link_to_account, 'type', 'status', credit_card_expiry,
                     credit_card_is_valid,
                     psp_admin_link]
     search_fields = ['number'] + account_owner_search_fields
@@ -166,26 +191,12 @@ class CreditCardInline(admin.TabularInline):
 ##############################################################
 # Charges
 
-def charge_invoice(charge):
-    invoice_id = charge.invoice_id
-    if invoice_id is None:
-        return _('Uninvoiced')
-    else:
-        text = '#{}'.format(invoice_id)
-        url = reverse('admin:billing_invoice_change', args=(invoice_id,))
-        return format_html('<a href="{}">{}</a>', url, text)
-
-
-charge_invoice.short_description = 'Invoice'  # type: ignore
-
-charge_invoice.admin_order_field = 'invoice'  # type: ignore
-
 
 def charge_deleted(charge):
-    return charge.deleted
+    return 'Deleted' if charge.deleted else '-'
 
 
-charge_deleted.short_description = 'Deleted?'  # type: ignore
+charge_deleted.short_description = 'Deleted'  # type: ignore
 
 charge_deleted.admin_order_field = 'deleted'  # type: ignore
 
@@ -208,11 +219,11 @@ product_properties.short_description = 'Product props'  # type: ignore
 @admin.register(Charge)
 class ChargeAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
-    list_display = ['type', 'account', 'product_code', product_properties, 'ad_hoc_label', created_on, modified_on,
-                    charge_invoice, amount, charge_deleted]
+    list_display = ['type', created_on, link_to_account, amount, 'product_code', product_properties, 'ad_hoc_label',
+                    link_to_invoice]
     search_fields = ['amount', 'amount_currency', 'product_code', 'product_properties__value', 'ad_hoc_label',
                      'invoice__id'] + account_owner_search_fields
-    list_filter = ['amount_currency', 'deleted']
+    list_filter = ['amount_currency', 'product_code', 'deleted']
     ordering = ['-created']
     list_select_related = True
 
@@ -221,6 +232,7 @@ class ChargeAdmin(AppendOnlyModelAdmin):
     inlines = [ProductPropertyInline]
 
     def get_queryset(self, request):
+        # In this particular admin screen we want to see even the deleted charges
         qs = Charge.all_charges
         ordering = self.get_ordering(request)
         if ordering:
@@ -233,7 +245,7 @@ class ChargeAdmin(AppendOnlyModelAdmin):
 class ChargeInline(admin.TabularInline):
     verbose_name_plural = 'Charges and Credits'
     model = Charge
-    fields = readonly_fields = ['type', created_on, charge_invoice, amount, 'product_code', product_properties,
+    fields = readonly_fields = ['type', created_on, link_to_invoice, amount, 'product_code', product_properties,
                                 'ad_hoc_label']
     show_change_link = True
     can_delete = False
@@ -247,27 +259,13 @@ class ChargeInline(admin.TabularInline):
 #############################################################
 # Transactions
 
-def transaction_invoice(transaction):
-    invoice_id = transaction.invoice_id
-    if invoice_id is None:
-        return _('Uninvoiced')
-    else:
-        text = '#{}'.format(invoice_id)
-        url = reverse('admin:billing_invoice_change', args=(invoice_id,))
-        return format_html('<a href="{}">{}</a>', url, text)
-
-
-transaction_invoice.short_description = 'Invoice'  # type: ignore
-
-transaction_invoice.admin_order_field = 'invoice'  # type: ignore
-
 
 @admin.register(Transaction)
 class TransactionAdmin(ReadOnlyModelAdmin):
     verbose_name_plural = 'Transactions'
     date_hierarchy = 'created'
-    list_display = ['type', 'account', 'payment_method', 'credit_card_number', created_on, 'success',
-                    transaction_invoice, amount, psp_admin_link]
+    list_display = ['type', created_on, link_to_account, 'payment_method', 'credit_card_number', 'success',
+                    link_to_invoice, amount, psp_admin_link]
     list_display_links = ['type']
     search_fields = ['credit_card_number', 'amount'] + account_owner_search_fields
     list_filter = ['payment_method', 'success', 'amount_currency']
@@ -329,7 +327,7 @@ invoice_last_transaction.short_description = 'Last transaction'  # type: ignore
 @admin.register(Invoice)
 class InvoiceAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
-    list_display = [invoice_number, 'account', created_on, invoice_last_transaction, 'status', 'total']
+    list_display = [invoice_number, created_on, link_to_account, invoice_last_transaction, 'status', 'total']
     list_filter = ['status']
     search_fields = ['id', 'account__owner__email', 'account__owner__first_name', 'account__owner__last_name']
     ordering = ['-created']

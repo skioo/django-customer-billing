@@ -163,7 +163,7 @@ class Charge(Model):
     product_code = models.CharField(max_length=10, blank=True, validators=[product_code_validator], db_index=True,
                                     help_text='Identifies the kind of product being charged or credited')
     reverses = models.OneToOneField('self', null=True, blank=True, related_name='reversed_by', on_delete=PROTECT)
-    deleted = models.BooleanField(default=False)
+    deleted = models.BooleanField(default=False, db_index=True)
 
     objects = ChargeManager()
 
