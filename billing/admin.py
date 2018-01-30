@@ -2,7 +2,7 @@ from datetime import datetime
 
 from django.conf.urls import url
 from django.contrib import admin
-from django.db.models import Max, Count, Q
+from django.db.models import Max, Prefetch
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.utils.html import format_html
@@ -381,7 +381,7 @@ class AccountRatingFilter(admin.SimpleListFilter):
 
 
 def punctual(obj):
-    return obj.past_due_invoice_count == 0
+    return len(obj.past_due_invoice_ids) == 0
 
 
 punctual.boolean = True  # type: ignore
@@ -431,5 +431,8 @@ class AccountAdmin(AppendOnlyModelAdmin):
         return my_urls + urls
 
     def get_queryset(self, request):
+        past_due_invoices_qs = Invoice.objects.filter(status=Invoice.PAST_DUE)
         return super().get_queryset(request) \
-            .annotate(past_due_invoice_count=Count('invoices', filter=Q(status=Invoice.PAST_DUE)))
+            .prefetch_related(Prefetch('invoices',
+                                       queryset=past_due_invoices_qs.only('id'),
+                                       to_attr='past_due_invoice_ids'))
