@@ -191,7 +191,6 @@ class CreditCardInline(admin.TabularInline):
 ##############################################################
 # Charges
 
-
 def charge_deleted(charge):
     return 'Deleted' if charge.deleted else '-'
 
@@ -258,7 +257,6 @@ class ChargeInline(admin.TabularInline):
 
 #############################################################
 # Transactions
-
 
 @admin.register(Transaction)
 class TransactionAdmin(ReadOnlyModelAdmin):
@@ -387,6 +385,15 @@ def punctual(obj):
 punctual.boolean = True  # type: ignore
 
 
+def has_valid_cc(obj):
+    return len(obj.valid_credit_card_ids) != 0
+
+
+has_valid_cc.boolean = True  # type: ignore
+
+punctual.boolean = True  # type: ignore
+
+
 def create_invoices_button(obj):
     if obj.pk:
         return format_html(
@@ -408,7 +415,7 @@ def do_create_invoices(request, account_id):
 @admin.register(Account)
 class AccountAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
-    list_display = ['owner', created_on, modified_on, punctual, 'currency', 'status']
+    list_display = ['owner', created_on, modified_on, punctual, has_valid_cc, 'currency', 'status']
     search_fields = ['owner__email', 'owner__first_name', 'owner__last_name']
     ordering = ['-created']
     list_filter = [AccountRatingFilter, 'currency', 'status']
@@ -435,4 +442,7 @@ class AccountAdmin(AppendOnlyModelAdmin):
         return super().get_queryset(request) \
             .prefetch_related(Prefetch('invoices',
                                        queryset=past_due_invoices_qs.only('id'),
-                                       to_attr='past_due_invoice_ids'))
+                                       to_attr='past_due_invoice_ids')) \
+            .prefetch_related(Prefetch('credit_cards',
+                                       queryset=CreditCard.objects.valid().only('id'),
+                                       to_attr='valid_credit_card_ids'))
