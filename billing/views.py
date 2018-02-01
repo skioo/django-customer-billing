@@ -56,7 +56,6 @@ class CreditCardViewSet(ListModelMixin, RetrieveModelMixin, UpdateModelMixin, Ge
 
 ########################################################################################################
 
-
 class ProductPropertyListSerializer(serializers.ListSerializer):
     # From: https://stackoverflow.com/questions/31583445
     def to_representation(self, data):
@@ -79,11 +78,15 @@ class ChargeSerializer(serializers.ModelSerializer):
         exclude = ['account', 'deleted', 'reverses']
 
 
+########################################################################################################
+
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
         exclude = ['account', 'psp_content_type', 'psp_object_id']
 
+
+########################################################################################################
 
 class InvoiceSerializer(serializers.ModelSerializer):
     total = TotalSerializer(read_only=True)
@@ -92,6 +95,8 @@ class InvoiceSerializer(serializers.ModelSerializer):
         model = Invoice
         exclude = ['account']
 
+
+########################################################################################################
 
 class AccountSerializer(serializers.ModelSerializer):
     balance = TotalSerializer(read_only=True)
@@ -115,7 +120,7 @@ class AccountView(RetrieveAPIView):
 
     def get_object(self):
         try:
-            return Account.open \
+            return Account.objects.open() \
                 .prefetch_related('invoices') \
                 .prefetch_related('credit_cards') \
                 .prefetch_related('transactions') \

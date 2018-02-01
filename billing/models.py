@@ -32,12 +32,15 @@ def total_amount(qs) -> Total:
 ########################################################################################################
 
 
-class OnlyOpenAccountsManager(models.Manager):
-    def get_queryset(self):
-        return super().get_queryset().filter(status=Account.OPEN)
+class AccountQuerySet(models.QuerySet):
+    def open(self):
+        return self.filter(status=Account.OPEN)
 
     def with_uninvoiced_charges(self):
         return self.filter(charges__isnull=False, charges__invoice__isnull=True)
+
+    def with_no_charges_since(self, dt: datetime):
+        return self.filter(charges__created__lt=dt)
 
 
 class Account(Model):
@@ -54,8 +57,7 @@ class Account(Model):
     currency = CurrencyField(db_index=True)
     status = FSMField(max_length=20, choices=STATUS_CHOICES, default=OPEN, db_index=True)
 
-    objects = models.Manager()
-    open = OnlyOpenAccountsManager()
+    objects = AccountQuerySet.as_manager()
 
     def balance(self, as_of: date = None):
         charges = Charge.objects.filter(account=self)

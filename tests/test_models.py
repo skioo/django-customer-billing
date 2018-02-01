@@ -95,12 +95,12 @@ class AccountTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user('a-username')
 
-    def test_it_should_return_open_accounts(self):
+    def test_it_should_return_only_open_accounts(self):
         Account.objects.create(owner=self.user, currency='CHF')
         user2 = User.objects.create_user('a-username-2')
         Account.objects.create(owner=user2, currency='EUR', status=Account.CLOSED)
         with self.assertNumQueries(1):
-            open_accounts = Account.open.all()
+            open_accounts = Account.objects.open()
             assert len(open_accounts) == 1
 
     def test_it_should_filter_accounts_with_uninvoiced_charges(self):
@@ -110,20 +110,31 @@ class AccountTest(TestCase):
                               invoice=invoice1)
 
         user2 = User.objects.create_user('a-username-2')
-        account2 = Account.objects.create(owner=user2, currency='EUR', status=Account.CLOSED)
+        account2 = Account.objects.create(owner=user2, currency='CHF')
         Charge.objects.create(account=account2, amount=Money(10, 'CHF'), product_code='ACHARGE')
 
-        user3 = User.objects.create_user('a-username-3')
-        account3 = Account.objects.create(owner=user3, currency='EUR')
-        Charge.objects.create(account=account3, amount=Money(10, 'CHF'), product_code='ACHARGE')
-
-        user4 = User.objects.create_user('a-username-4')
-        Account.objects.create(owner=user4, currency='EUR')
+        user3 = User.objects.create_user('a-username-4')
+        Account.objects.create(owner=user3, currency='EUR')
 
         with self.assertNumQueries(1):
-            open_with_uninvoiced = Account.open.with_uninvoiced_charges()
+            open_with_uninvoiced = Account.objects.with_uninvoiced_charges()
             assert len(open_with_uninvoiced) == 1
-        assert open_with_uninvoiced[0] == account3
+            assert open_with_uninvoiced[0] == account2
+
+    def test_it_should_filter_accounts_with_no_charges_since(self):
+        account1 = Account.objects.create(owner=self.user, currency='CHF')
+        charge1 = Charge.objects.create(account=account1, amount=Money(10, 'CHF'), product_code='ACHARGE')
+        charge1.created = parse_datetime('2001-01-01T01:01:01Z')
+        charge1.save()
+
+        user2 = User.objects.create_user('a-username-2')
+        account2 = Account.objects.create(owner=user2, currency='CHF')
+        Charge.objects.create(account=account2, amount=Money(15, 'CHF'), product_code='BCHARGE')
+
+        with self.assertNumQueries(1):
+            quiet_accounts = Account.objects.with_no_charges_since(parse_datetime('2017-01-01T01:01:01Z'))
+            assert len(quiet_accounts) == 1
+            assert quiet_accounts[0] == account1
 
     def test_it_should_compute_the_account_balance(self):
         account = Account.objects.create(owner=self.user, currency='CHF')
