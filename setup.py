@@ -25,6 +25,7 @@ setup(
         'djangorestframework',
         'structlog',
         'typing',
+        'progressbar2'
     ],
     license=billing.__licence__,
     classifiers=[

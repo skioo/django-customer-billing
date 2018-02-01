@@ -46,11 +46,11 @@ def reopen(account_id: str) -> None:
 
 def create_invoices(account_id: str) -> Sequence[Invoice]:
     """
-    Creates and returns the invoices for any uninvoiced charges in the account.
-    If multiple currencies are involved then one invoice per currency is generated.
+    Creates the invoices for any uninvoiced charges in the account.
+    Creates one invoice per currency (only when the total in that currency is positive).
 
-    :param account_id: The account to examine for uninvoiced charges.
-    :return: A possibly empty list of Invoice objects.
+    :param account_id: The account to invoice.
+    :return: A possibly-empty list of Invoices.
     """
     invoices = []
     with transaction.atomic():

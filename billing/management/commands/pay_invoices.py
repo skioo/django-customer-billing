@@ -1,65 +1,60 @@
 import logging
-import sys
 
+import progressbar
+import structlog
+from collections import defaultdict
 from django.core.management.base import BaseCommand
 
-from .logging_helper import setup_logging
 from ...actions.invoices import pay_with_account_credit_cards
 from ...models import Invoice
 
 
+def set_debug(logger_name):
+    logger = logging.getLogger(logger_name)
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(logging.StreamHandler())
+
+
+logger = structlog.get_logger()
+
+
 class Command(BaseCommand):
-    help = 'Pay pending invoices with credit cards registered on accounts'
+    help = """Pay pending invoices with credit cards registered on accounts.
+              Pass v2 to see sql queries"""
 
     def add_arguments(self, parser):
-        parser.add_argument('--verbose', action='store_true', dest='verbose')
-        parser.add_argument('--dry-run', action='store_true', dest='dry_run')
+        parser.add_argument('--dry-run', action='store_true', dest='dry_run',
+                            help="Displays the payable invoices but doesn't perform any action.")
+        parser.add_argument('--progress', action='store_true', dest='progress',
+                            help='Displays a progress bar')
 
     def handle(self, *args, **options):
-        setup_logging(options['verbose'])
+        if options['verbosity'] >= 2:
+            set_debug('django.db.backends')
+
+        dry_run = options['dry_run']
 
         invoices = Invoice.objects.payable()
-        self.stdout.write('{} invoices are payable\n\n'.format(len(invoices)))
+        logger.info('pay-invoices-start', dry_run=dry_run, invoices=len(invoices))
 
-        if options['dry_run']:
+        if dry_run:
             return
 
-        stats = Stats()
+        if options['progress']:
+            bar = progressbar.ProgressBar()
+            invoices = bar(invoices)
+
         try:
+            stats = defaultdict(lambda: 0)
             for invoice in invoices:
                 try:
                     maybe_transaction = pay_with_account_credit_cards(invoice.pk)
                     if maybe_transaction is not None:
-                        stats.success(invoice)
+                        stats['success'] += 1
                     else:
-                        stats.failure(invoice)
-                except Exception:
-                    stats.error(invoice, sys.exc_info()[1])
+                        stats['failure'] += 1
+                except Exception as ex:
+                    logger.error('pay-invoices-error', invoice_id=invoice.pk, ex=ex)
+                    stats['error'] += 1
         finally:
-            self.stdout.write(str(stats))
-
-
-class Stats:
-    def __init__(self):
-        self._success = 0
-        self._failure = 0
-        self._error = 0
-
-    def success(self, invoice):
-        logging.debug('Invoice %s, paid with cc', invoice)
-        self._success += 1
-
-    def failure(self, invoice):
-        logging.debug('Invoice %s, payment failure', invoice)
-        self._failure += 1
-
-    def error(self, invoice, error):
-        logging.error('Invoice %s, error: %s', invoice, error)
-        self._error += 1
-
-    def __str__(self):
-        template = 'Success:    {s._success}\n' \
-                   'Failure:    {s._failure}\n' \
-                   'Errors:     {s._error}\n' \
-                   'Total:      {total}\n'
-        return template.format(s=self, total=self._success + self._failure + self._error)
+            logger.info('pay-invoices-done', **stats)

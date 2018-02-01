@@ -1,61 +1,78 @@
 import logging
-import sys
+from datetime import timedelta
+from typing import Sequence
 
+import progressbar
+import structlog
+from collections import defaultdict
 from django.core.management.base import BaseCommand
+from django.db import transaction
+from django.utils import timezone
 
-from .logging_helper import setup_logging
 from ...actions.accounts import create_invoices
-from ...models import Account
+from ...models import Account, Invoice
+
+
+def set_debug(logger_name):
+    logger = logging.getLogger(logger_name)
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(logging.StreamHandler())
+
+
+logger = structlog.get_logger()
 
 
 class Command(BaseCommand):
-    help = 'Create invoices for all the accounts that have pending charges'
+    help = """Create invoices for all the accounts that have pending charges.
+              Pass -v 2 to see sql queries.
+              """
 
     def add_arguments(self, parser):
-        parser.add_argument('--verbose', action='store_true', dest='verbose')
-        parser.add_argument('--dry-run', action='store_true', dest='dry_run')
+        parser.add_argument('--quiet-days', type=int, default=0,
+                            help='Accounts with charges that appeared since quiet-days will not be invoiced')
+        parser.add_argument('--dry-run', action='store_true', dest='dry_run',
+                            help="Goes thru the motions but doesn't create invoices in the database")
+        parser.add_argument('--progress', action='store_true', dest='progress',
+                            help='Displays a progress bar')
 
     def handle(self, *args, **options):
-        setup_logging(options['verbose'])
+        if options['verbosity'] >= 2:
+            set_debug('django.db.backends')
 
-        accounts = Account.open.with_uninvoiced_charges()
-        self.stdout.write('{} accounts are invoiceable\n\n'.format(len(accounts)))
+        accounts = Account.objects.open().with_uninvoiced_charges()
 
-        if options['dry_run']:
-            return
+        quiet_days = options['quiet_days']
+        if quiet_days != 0:
+            dt = timezone.now() - timedelta(days=quiet_days)
+            accounts = accounts.with_no_charges_since(dt)
 
-        stats = Stats()
+        dry_run = options['dry_run']
+        logger.info('create-invoices-start', dry_run=dry_run, quiet_days=quiet_days,
+                    accounts_with_uninvoiced_charges=len(accounts))
+
+        if options['progress']:
+            bar = progressbar.ProgressBar()
+            accounts = bar(accounts)
+
         try:
+            stats = defaultdict(lambda: 0)
             for account in accounts:
                 try:
-                    invoices = create_invoices(account_id=account.pk)
-                    stats.result(account, invoices)
-                except Exception:
-                    stats.error(account, sys.exc_info()[1])
+                    if dry_run:
+                        invoices = pretend_to_create_invoices(account_id=account.pk)
+                    else:
+                        invoices = create_invoices(account_id=account.pk)
+                    stats_key = '{}_invoices'.format(len(invoices))
+                    stats[stats_key] += 1
+                except Exception as ex:
+                    logger.error('error', account_id=account.pk, ex=ex)
+                    stats['error'] += 1
         finally:
-            self.stdout.write(str(stats))
+            logger.info('create-invoices-done', **stats)
 
 
-class Stats:
-    def __init__(self):
-        self._success = 0
-        self._no_invoice = 0
-        self._error = 0
-
-    def result(self, account, invoices):
-        logging.debug('Account %s, generated %s invoices', account, len(invoices))
-        if len(invoices) > 0:
-            self._success += 1
-        else:
-            self._no_invoice += 1
-
-    def error(self, account, error):
-        logging.error('Account %s, error: %s', account, error)
-        self._error += 1
-
-    def __str__(self):
-        template = 'Success:       {s._success}\n' \
-                   'No invoice:    {s._no_invoice}\n' \
-                   'Errors:        {s._error}\n' \
-                   'Total:         {total}\n'
-        return template.format(s=self, total=self._success + self._no_invoice + self._error)
+def pretend_to_create_invoices(account_id: str) -> Sequence[Invoice]:
+    with transaction.atomic():
+        invoices = create_invoices(account_id=account_id)
+        transaction.set_rollback(True)
+    return invoices
