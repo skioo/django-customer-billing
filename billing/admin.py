@@ -289,6 +289,25 @@ class TransactionInline(admin.TabularInline):
 ##############################################################
 # Invoices
 
+class InvoiceOverdueFilter(admin.SimpleListFilter):
+    title = _('Overdue')
+    parameter_name = 'overdue'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('yes', _('Yes')),
+            ('no', _('No')),
+            ('all', _('All')),
+        )
+
+    def queryset(self, request, queryset):
+        today = datetime.now().date()
+        if self.value() == 'yes':
+            return queryset.filter(due_date__lt=today)
+        if self.value() == 'no':
+            return queryset.filter(due_date__gte=today)
+
+
 def pay_invoice_button(obj):
     if obj.pk and obj.in_payable_state:
         return format_html(
@@ -327,8 +346,9 @@ invoice_last_transaction.short_description = 'Last transaction'  # type: ignore
 @admin.register(Invoice)
 class InvoiceAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
-    list_display = [invoice_number, created_on, link_to_account, invoice_last_transaction, 'status', 'total']
-    list_filter = ['status']
+    list_display = [invoice_number, created_on, link_to_account, invoice_last_transaction, 'status', 'due_date',
+                    'total']
+    list_filter = ['status', InvoiceOverdueFilter]
     search_fields = ['id', 'account__owner__email', 'account__owner__first_name', 'account__owner__last_name']
     ordering = ['-created']
 
@@ -352,7 +372,7 @@ class InvoiceAdmin(AppendOnlyModelAdmin):
 
 class InvoiceInline(admin.TabularInline):
     model = Invoice
-    readonly_fields = [invoice_number, created_on, 'status', 'total']
+    readonly_fields = [invoice_number, created_on, 'status', 'due_date', 'total']
     show_change_link = True
     can_delete = False
     extra = 0
@@ -362,29 +382,8 @@ class InvoiceInline(admin.TabularInline):
 ##############################################################
 # Accounts
 
-class AccountRatingFilter(admin.SimpleListFilter):
-    title = _('Rating')
-    parameter_name = 'rating'
-
-    def lookups(self, request, model_admin):
-        return (
-            ('punctual', _('Punctual')),
-            ('delinquent', _('Delinquent')),
-            ('all', _('All')),
-        )
-
-    def queryset(self, request, queryset):
-        if self.value() == 'punctual':
-            return queryset.exclude(invoices__status=Invoice.PAST_DUE)
-        if self.value() == 'delinquent':
-            return queryset.filter(invoices__status=Invoice.PAST_DUE)
-
-
-def punctual(obj):
-    return len(obj.past_due_invoice_ids) == 0
-
-
-punctual.boolean = True  # type: ignore
+def payable_invoice_count(obj):
+    return len(obj.payable_invoice_ids)
 
 
 def has_valid_cc(obj):
@@ -392,8 +391,6 @@ def has_valid_cc(obj):
 
 
 has_valid_cc.boolean = True  # type: ignore
-
-punctual.boolean = True  # type: ignore
 
 
 def create_invoices_button(obj):
@@ -417,10 +414,10 @@ def do_create_invoices(request, account_id):
 @admin.register(Account)
 class AccountAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
-    list_display = ['owner', created_on, modified_on, punctual, has_valid_cc, 'currency', 'status']
+    list_display = ['owner', created_on, modified_on, payable_invoice_count, has_valid_cc, 'currency', 'status']
     search_fields = ['owner__email', 'owner__first_name', 'owner__last_name']
     ordering = ['-created']
-    list_filter = [AccountRatingFilter, 'currency', 'status']
+    list_filter = ['currency', 'status']
     list_select_related = True
 
     raw_id_fields = ['owner']
@@ -440,11 +437,10 @@ class AccountAdmin(AppendOnlyModelAdmin):
         return my_urls + urls
 
     def get_queryset(self, request):
-        past_due_invoices_qs = Invoice.objects.filter(status=Invoice.PAST_DUE)
         return super().get_queryset(request) \
             .prefetch_related(Prefetch('invoices',
-                                       queryset=past_due_invoices_qs.only('id'),
-                                       to_attr='past_due_invoice_ids')) \
+                                       queryset=Invoice.objects.payable().only('id'),
+                                       to_attr='payable_invoice_ids')) \
             .prefetch_related(Prefetch('credit_cards',
                                        queryset=CreditCard.objects.valid().only('id'),
                                        to_attr='valid_credit_card_ids'))

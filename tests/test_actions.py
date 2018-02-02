@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.test import TestCase
@@ -49,29 +51,29 @@ class AccountActionsTest(TestCase):
     def test_it_should_not_create_invoice_when_money_is_owed_to_the_user(self):
         Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
         Charge.objects.create(account=self.account, amount=Money(-30, 'CHF'), product_code='ACREDIT')
-        assert not accounts.create_invoices(account_id=self.account.pk)
+        assert not accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
 
     def test_it_should_not_create_an_invoice_when_no_money_is_due(self):
         Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
         Charge.objects.create(account=self.account, amount=Money(-10, 'CHF'), product_code='ACREDIT')
-        assert not accounts.create_invoices(account_id=self.account.pk)
+        assert not accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
 
     def test_it_should_create_an_invoice_when_money_is_due(self):
         Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
         Charge.objects.create(account=self.account, amount=Money(-3, 'CHF'), product_code='ACREDIT')
-        invoices = accounts.create_invoices(account_id=self.account.pk)
+        invoices = accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
         assert len(invoices) == 1
         invoice = invoices[0]
         assert invoice.total() == Total(7, 'CHF')
         assert invoice.items.count() == 2
 
         # Verify there is nothing left to invoice on this account
-        assert not accounts.create_invoices(account_id=self.account.pk)
+        assert not accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
 
     def test_it_should_handle_multicurrency_univoiced_charges(self):
         Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='10CHF')
         Charge.objects.create(account=self.account, amount=Money(30, 'EUR'), product_code='30EURO')
-        invoices = accounts.create_invoices(account_id=self.account.pk)
+        invoices = accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
         assert len(invoices) == 2
 
         # For some reason the output is always sorted. This makes asserting easy
@@ -88,7 +90,7 @@ class AccountActionsTest(TestCase):
         assert invoice2.total().currencies() == ['EUR']
 
         # Verify there is nothing left to invoice on this account
-        assert not accounts.create_invoices(account_id=self.account.pk)
+        assert not accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
 
 
 class InvoicesActionsTest(TestCase):
@@ -106,7 +108,7 @@ class InvoicesActionsTest(TestCase):
         CreditCard.objects.create(account=account, type='VIS',
                                   number='1111', expiry_month=12, expiry_year=30,
                                   psp_object=psp_credit_card)
-        invoice = Invoice.objects.create(account=account)
+        invoice = Invoice.objects.create(account=account, due_date=date.today())
 
         with raises(invoices.PreconditionError, match='Cannot pay empty invoice\.'):
             invoices.pay_with_account_credit_cards(invoice.pk)
@@ -114,7 +116,7 @@ class InvoicesActionsTest(TestCase):
     def test_it_should_prevent_paying_an_already_paid_invoice(self):
         user = User.objects.create_user('a-username')
         account = Account.objects.create(owner=user, currency='CHF')
-        invoice = Invoice.objects.create(account=account, status=Invoice.PAID)
+        invoice = Invoice.objects.create(account=account, due_date=date.today(), status=Invoice.PAID)
 
         with raises(invoices.PreconditionError, match='Cannot pay invoice with status PAID\.'):
             invoices.pay_with_account_credit_cards(invoice.pk)
@@ -126,7 +128,7 @@ class InvoicesActionsTest(TestCase):
         CreditCard.objects.create(account=account, type='VIS',
                                   number='1111', expiry_month=12, expiry_year=11,
                                   psp_object=psp_credit_card)
-        invoice = Invoice.objects.create(account=account)
+        invoice = Invoice.objects.create(account=account, due_date=date.today())
         Charge.objects.create(account=account, invoice=invoice, amount=Money(10, 'CHF'), product_code='ACHARGE')
 
         with raises(invoices.PreconditionError, match='No valid credit card on account\.'):
@@ -139,7 +141,7 @@ class InvoicesActionsTest(TestCase):
         CreditCard.objects.create(account=account, type='VIS',
                                   number='1111', expiry_month=12, expiry_year=30,
                                   psp_object=psp_credit_card)
-        invoice = Invoice.objects.create(account=account)
+        invoice = Invoice.objects.create(account=account, due_date=date.today())
         Charge.objects.create(account=account, invoice=invoice, amount=Money(10, 'CHF'), product_code='ACHARGE')
 
         payment = invoices.pay_with_account_credit_cards(invoice.pk)
@@ -197,7 +199,7 @@ class ChargeActionsTest(TestCase):
         assert retrieved.deleted
 
     def test_it_should_create_reversal_credit_for_invoiced_charge(self):
-        invoice = Invoice.objects.create(account=self.account)
+        invoice = Invoice.objects.create(account=self.account, due_date=date.today())
         charge = Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='10CHF',
                                        invoice=invoice)
         charges.cancel_charge(charge.pk)

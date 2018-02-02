@@ -57,13 +57,15 @@ class AccountViewTest(TestCase):
                     'id': 1,
                     'created': '2017-10-21T03:49:41.728000-05:00',
                     'modified': '2017-10-22T17:22:22.090000-05:00',
-                    'status': 'PAST_DUE',
+                    'due_date': '2017-10-22',
+                    'status': 'PENDING',
                     'total': [{'amount': '15.00', 'amount_currency': 'USD'}]
                 }, {
                     'id': 2,
-                    'status': 'PENDING',
                     'created': '2017-10-21T04:47:14.554000-05:00',
                     'modified': '2017-10-22T17:22:22.090000-05:00',
+                    'due_date': '2017-10-22',
+                    'status': 'PENDING',
                     'total': []
                 }
             ]

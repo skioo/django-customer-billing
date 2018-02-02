@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -19,33 +19,37 @@ class InvoiceTest(TestCase):
         self.account = Account.objects.create(owner=user, currency='CHF')
 
     def test_it_should_determine_if_the_invoice_is_payable(self):
-        invoice1 = Invoice.objects.create(account=self.account, status=Invoice.PENDING)
+        invoice1 = Invoice.objects.create(account=self.account, status=Invoice.PENDING, due_date=date.today())
         with self.assertNumQueries(0):
             assert invoice1.in_payable_state
-        invoice2 = Invoice.objects.create(account=self.account, status=Invoice.CANCELLED)
+        invoice2 = Invoice.objects.create(account=self.account, status=Invoice.CANCELLED, due_date=date.today())
         with self.assertNumQueries(0):
             assert not invoice2.in_payable_state
 
     def test_it_should_select_payable_invoices(self):
-        invoice1 = Invoice.objects.create(account=self.account, status=Invoice.PENDING)
-        invoice2 = Invoice.objects.create(account=self.account, status=Invoice.PAST_DUE)
-        Invoice.objects.create(account=self.account, status=Invoice.CANCELLED)
-        Invoice.objects.create(account=self.account, status=Invoice.PAID)
+        invoice_yesterday = Invoice.objects.create(account=self.account, status=Invoice.PENDING,
+                                                   due_date=date.today() - timedelta(days=1))
+        invoice_today = Invoice.objects.create(account=self.account, status=Invoice.PENDING, due_date=date.today())
+        invoice_tomorrow = Invoice.objects.create(account=self.account, status=Invoice.PENDING,
+                                                  due_date=date.today() + timedelta(days=1))
+        Invoice.objects.create(account=self.account, status=Invoice.CANCELLED, due_date=date.today())
+        Invoice.objects.create(account=self.account, status=Invoice.PAID, due_date=date.today())
         with self.assertNumQueries(1):
-            payable_invoices = Invoice.objects.payable().order_by('status')
-            assert len(payable_invoices) == 2
-            assert payable_invoices[0] == invoice2
-            assert payable_invoices[1] == invoice1
+            payable_invoices = Invoice.objects.payable()
+            assert set(payable_invoices) == {invoice_yesterday, invoice_today}
+        with self.assertNumQueries(1):
+            payable_invoices = Invoice.objects.payable(as_of=date.today() + timedelta(days=1))
+            assert set(payable_invoices) == {invoice_yesterday, invoice_today, invoice_tomorrow}
 
     def test_it_should_compute_the_invoice_total(self):
-        invoice = Invoice.objects.create(account=self.account)
+        invoice = Invoice.objects.create(account=self.account, due_date=date.today())
         Charge.objects.create(account=self.account, invoice=invoice, amount=Money(10, 'CHF'), product_code='ACHARGE')
         Charge.objects.create(account=self.account, invoice=invoice, amount=Money(-3, 'CHF'), product_code='ACREDIT')
         with self.assertNumQueries(1):
             assert invoice.total() == Total(7, 'CHF')
 
     def test_it_should_compute_the_invoice_total_in_multiple_currencies(self):
-        invoice = Invoice.objects.create(account=self.account)
+        invoice = Invoice.objects.create(account=self.account, due_date=date.today())
         Charge.objects.create(account=self.account, invoice=invoice, amount=Money(10, 'CHF'), product_code='ACHARGE')
         Charge.objects.create(account=self.account, invoice=invoice, amount=Money(-3, 'EUR'), product_code='ACREDIT')
         with self.assertNumQueries(1):
@@ -105,7 +109,7 @@ class AccountTest(TestCase):
 
     def test_it_should_filter_accounts_with_uninvoiced_positive_charges(self):
         account1 = Account.objects.create(owner=self.user, currency='CHF')
-        invoice1 = Invoice.objects.create(account=account1)
+        invoice1 = Invoice.objects.create(account=account1, due_date=date.today())
         Charge.objects.create(account=account1, amount=Money(10, 'CHF'), product_code='ACHARGE',
                               invoice=invoice1)
 

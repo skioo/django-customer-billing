@@ -33,18 +33,21 @@
   "model": "billing.invoice", "pk": 1, "fields": {
     "account": "016e8ed0-8786-4ffc-b5e0-bf2b919c8d2b", "created": "2017-10-21T08:49:41.728Z",
     "modified": "2017-10-22T22:22:22.090Z",
-    "status": "PAST_DUE"
+    "due_date": "2017-10-22",
+    "status": "PENDING"
   }
 }, {
   "model": "billing.invoice", "pk": 2, "fields": {
     "account": "016e8ed0-8786-4ffc-b5e0-bf2b919c8d2b", "created": "2017-10-21T09:47:14.554Z",
     "modified": "2017-10-22T22:22:22.090Z",
+    "due_date": "2017-10-22",
     "status": "PENDING"
   }
 }, {
   "model": "billing.invoice", "pk": 3, "fields": {
     "account": "c8674163-9306-49ee-95ed-17860def82a4", "created": "2017-10-21T11:20:29.787Z",
     "modified": "2017-10-22T22:22:22.090Z",
+    "due_date": "2017-10-22",
     "status": "PENDING"
   }
 }, {

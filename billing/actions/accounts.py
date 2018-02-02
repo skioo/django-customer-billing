@@ -5,6 +5,7 @@ Also, the account is the aggregate root for invoices and charges,
 so the creation of those is managed here.
 
 """
+from datetime import date
 from typing import Dict, Optional, Sequence
 
 from django.db import transaction
@@ -44,7 +45,7 @@ def reopen(account_id: str) -> None:
         account.save()
 
 
-def create_invoices(account_id: str) -> Sequence[Invoice]:
+def create_invoices(account_id: str, due_date: date) -> Sequence[Invoice]:
     """
     Creates the invoices for any uninvoiced charges in the account.
     Creates one invoice per currency (only when the total in that currency is positive).
@@ -57,7 +58,7 @@ def create_invoices(account_id: str) -> Sequence[Invoice]:
         ucs, total = Charge.objects.uninvoiced_with_total(account_id=account_id)
         for amount_due in total.monies():
             if amount_due.amount > 0:
-                invoice = Invoice.objects.create(account_id=account_id)
+                invoice = Invoice.objects.create(account_id=account_id, due_date=due_date)
                 Charge.objects. \
                     uninvoiced_in_currency(account_id=account_id, currency=amount_due.currency) \
                     .update(invoice=invoice)

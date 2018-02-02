@@ -1,5 +1,5 @@
 import logging
-from datetime import timedelta
+from datetime import timedelta, date
 from typing import Sequence
 
 import progressbar
@@ -7,7 +7,7 @@ import structlog
 from collections import defaultdict
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from django.utils import timezone
+from django.utils import timezone, dateparse
 
 from ...actions.accounts import create_invoices
 from ...models import Account, Invoice
@@ -22,14 +22,24 @@ def set_debug(logger_name):
 logger = structlog.get_logger()
 
 
+def parse_due_date(s):
+    d = dateparse.parse_date(s)
+    if d is None:
+        raise ('Not a valid iso8601 date: {}'.format(s))
+    return d
+
+
 class Command(BaseCommand):
     help = """Create invoices for all the accounts that have pending charges.
               Pass -v 2 to see sql queries.
               """
 
     def add_arguments(self, parser):
-        parser.add_argument('--quiet-days', type=int, default=0,
-                            help='Accounts with charges that appeared since quiet-days will not be invoiced')
+        parser.add_argument('--quiet-days', type=int, required=True,
+                            help='Accounts with charges that appeared since quiet-days will not be invoiced. '
+                                 '0 means invoice all.')
+        parser.add_argument('--due-date', type=parse_due_date, default=date.today(),
+                            help='The due date of the invoices that are created. Defaults to today')
         parser.add_argument('--dry-run', action='store_true', dest='dry_run',
                             help="Goes thru the motions but doesn't create invoices in the database")
         parser.add_argument('--progress', action='store_true', dest='progress',
@@ -47,7 +57,9 @@ class Command(BaseCommand):
             accounts = accounts.with_no_charges_since(dt)
 
         dry_run = options['dry_run']
-        logger.info('create-invoices-start', dry_run=dry_run, quiet_days=quiet_days,
+        due_date = options['due_date']
+
+        logger.info('create-invoices-start', dry_run=dry_run, quiet_days=quiet_days, due_date=due_date,
                     accounts_with_uninvoiced_charges=len(accounts))
 
         if options['progress']:
@@ -59,9 +71,9 @@ class Command(BaseCommand):
             for account in accounts:
                 try:
                     if dry_run:
-                        invoices = pretend_to_create_invoices(account_id=account.pk)
+                        invoices = pretend_to_create_invoices(account_id=account.pk, due_date=due_date)
                     else:
-                        invoices = create_invoices(account_id=account.pk)
+                        invoices = create_invoices(account_id=account.pk, due_date=due_date)
                     stats_key = '{}_invoices'.format(len(invoices))
                     stats[stats_key] += 1
                 except Exception as ex:
@@ -71,8 +83,8 @@ class Command(BaseCommand):
             logger.info('create-invoices-done', **stats)
 
 
-def pretend_to_create_invoices(account_id: str) -> Sequence[Invoice]:
+def pretend_to_create_invoices(account_id: str, due_date: date) -> Sequence[Invoice]:
     with transaction.atomic():
-        invoices = create_invoices(account_id=account_id)
+        invoices = create_invoices(account_id=account_id, due_date=due_date)
         transaction.set_rollback(True)
     return invoices

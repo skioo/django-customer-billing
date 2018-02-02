@@ -85,38 +85,35 @@ class Account(Model):
 ########################################################################################################
 
 
-class InvoiceManager(models.Manager):
-    def payable(self) -> QuerySet:
-        return Invoice.objects.filter(status__in=[Invoice.PENDING, Invoice.PAST_DUE])
+class InvoiceQuerySet(models.QuerySet):
+    def payable(self, as_of: date = None) -> QuerySet:
+        if as_of is None:
+            as_of = date.today()
+        return self.filter(status=Invoice.PENDING, due_date__lte=as_of)
 
 
 class Invoice(Model):
     PENDING = 'PENDING'
-    PAST_DUE = 'PAST_DUE'
     PAID = 'PAID'
     CANCELLED = 'CANCELLED'
     STATUS_CHOICES = (
         (PENDING, _('Pending')),
-        (PAST_DUE, _('Past-due')),
         (PAID, _('Paid')),
         (CANCELLED, _('Cancelled')),
     )
     account = models.ForeignKey(Account, related_name='invoices', on_delete=PROTECT)
     created = models.DateTimeField(auto_now_add=True, db_index=True)
     modified = models.DateTimeField(auto_now=True)
+    due_date = models.DateField()
     status = FSMField(max_length=20, choices=STATUS_CHOICES, default=PENDING, db_index=True)
 
-    objects = InvoiceManager()
+    objects = InvoiceQuerySet.as_manager()
 
-    @transition(field=status, source=PENDING, target=PAST_DUE)
-    def mark_past_due(self):
-        pass
-
-    @transition(field=status, source=[PENDING, PAST_DUE], target=PAID)
+    @transition(field=status, source=[PENDING], target=PAID)
     def pay(self):
         pass
 
-    @transition(field=status, source=[PENDING, PAST_DUE], target=CANCELLED)
+    @transition(field=status, source=[PENDING], target=CANCELLED)
     def cancel(self):
         pass
 
@@ -258,7 +255,7 @@ def compute_expiry_date(two_digit_year: int, month: int) -> date:
 class CreditCardQuerySet(models.QuerySet):
     def valid(self, as_of: date = None):
         if as_of is None:
-            as_of = datetime.now().date()
+            as_of = date.today()
         return self.filter(expiry_date__gte=as_of)
 
 
