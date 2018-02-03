@@ -103,7 +103,7 @@ class AccountTest(TestCase):
             open_accounts = Account.objects.open()
             assert len(open_accounts) == 1
 
-    def test_it_should_filter_accounts_with_uninvoiced_charges(self):
+    def test_it_should_filter_accounts_with_uninvoiced_positive_charges(self):
         account1 = Account.objects.create(owner=self.user, currency='CHF')
         invoice1 = Invoice.objects.create(account=account1)
         Charge.objects.create(account=account1, amount=Money(10, 'CHF'), product_code='ACHARGE',
@@ -113,11 +113,16 @@ class AccountTest(TestCase):
         account2 = Account.objects.create(owner=user2, currency='CHF')
         Charge.objects.create(account=account2, amount=Money(10, 'CHF'), product_code='ACHARGE')
 
-        user3 = User.objects.create_user('a-username-4')
-        Account.objects.create(owner=user3, currency='EUR')
+        user3 = User.objects.create_user('a-username-3')
+        account3 = Account.objects.create(owner=user3, currency='EUR')
+        Charge.objects.create(account=account3, amount=Money(10, 'CHF'), product_code='ACHARGE', deleted=True)
+
+        user4 = User.objects.create_user('a-username-4')
+        account4 = Account.objects.create(owner=user4, currency='EUR')
+        Charge.objects.create(account=account4, amount=Money(-10, 'CHF'), product_code='ACHARGE')
 
         with self.assertNumQueries(1):
-            open_with_uninvoiced = Account.objects.with_uninvoiced_charges()
+            open_with_uninvoiced = Account.objects.with_uninvoiced_positive_charges()
             assert len(open_with_uninvoiced) == 1
             assert open_with_uninvoiced[0] == account2
 

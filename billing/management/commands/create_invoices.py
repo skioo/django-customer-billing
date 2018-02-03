@@ -39,7 +39,7 @@ class Command(BaseCommand):
         if options['verbosity'] >= 2:
             set_debug('django.db.backends')
 
-        accounts = Account.objects.open().with_uninvoiced_charges()
+        accounts = Account.objects.open().with_uninvoiced_positive_charges()
 
         quiet_days = options['quiet_days']
         if quiet_days != 0:
