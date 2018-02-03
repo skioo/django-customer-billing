@@ -226,7 +226,7 @@ class ChargeAdmin(AppendOnlyModelAdmin):
     ordering = ['-created']
     list_select_related = True
 
-    raw_id_fields = ['account', 'reverses']
+    raw_id_fields = ['account', 'invoice', 'reverses']
     readonly_fields = ['created', 'modified']
     inlines = [ProductPropertyInline]
 
@@ -270,7 +270,7 @@ class TransactionAdmin(ReadOnlyModelAdmin):
     ordering = ['-created']
     list_select_related = True
 
-    raw_id_fields = ['account']
+    raw_id_fields = ['account', 'invoice']
     readonly_fields = ['created', 'modified']
 
 
