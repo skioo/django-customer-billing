@@ -192,14 +192,16 @@ class CreditCardInline(admin.TabularInline):
 # Charges
 
 def charge_deleted(charge):
-    return 'Deleted' if charge.deleted else '-'
+    """
+    We don't want to display a green check box to mean deleted.
+    We use text instead to make sure there is no misinterpretation.
+    """
+    return 'Yes' if charge.deleted else 'No'
 
 
 charge_deleted.short_description = 'Deleted'  # type: ignore
 
 charge_deleted.admin_order_field = 'deleted'  # type: ignore
-
-charge_deleted.boolean = False  # type: ignore
 
 
 class ProductPropertyInline(admin.TabularInline):
@@ -218,11 +220,11 @@ product_properties.short_description = 'Product props'  # type: ignore
 @admin.register(Charge)
 class ChargeAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
-    list_display = ['type', created_on, link_to_account, amount, 'product_code', product_properties, 'ad_hoc_label',
-                    link_to_invoice]
+    list_display = ['type', created_on, charge_deleted, link_to_account, amount, 'product_code', product_properties,
+                    'ad_hoc_label', link_to_invoice]
     search_fields = ['amount', 'amount_currency', 'product_code', 'product_properties__value', 'ad_hoc_label',
                      'invoice__id'] + account_owner_search_fields
-    list_filter = ['amount_currency', 'product_code', 'deleted']
+    list_filter = ['deleted', 'amount_currency', 'product_code']
     ordering = ['-created']
     list_select_related = True
 
