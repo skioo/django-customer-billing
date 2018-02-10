@@ -11,7 +11,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.core.validators import RegexValidator
 from django.db import models
-from django.db.models import Model, PROTECT, CASCADE, QuerySet, Sum
+from django.db.models import Model, PROTECT, CASCADE, QuerySet, Sum, SET_NULL
 from django.utils.translation import ugettext_lazy as _
 from django_fsm import FSMField, can_proceed, transition
 from djmoney.models.fields import CurrencyField, MoneyField
@@ -156,7 +156,7 @@ class Charge(Model):
     created = models.DateTimeField(auto_now_add=True, db_index=True)
     modified = models.DateTimeField(auto_now=True)
     account = models.ForeignKey(Account, on_delete=PROTECT, related_name='charges')
-    invoice = models.ForeignKey(Invoice, null=True, blank=True, related_name='items', on_delete=PROTECT)
+    invoice = models.ForeignKey(Invoice, null=True, blank=True, related_name='items', on_delete=SET_NULL)
     amount = MoneyField(max_digits=12, decimal_places=2)
     ad_hoc_label = models.TextField(blank=True, help_text='When not empty, this is shown verbatim to the user.')
     product_code = models.CharField(max_length=10, blank=True, validators=[product_code_validator], db_index=True,
