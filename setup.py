@@ -18,6 +18,9 @@ setup(
         'billing.migrations',
         'billing.management.commands',
     ],
+    package_data={'billing': [
+        'templates/admin/billing/*.html',
+    ]},
     install_requires=[
         'Django>=1.11',
         'django-money',

@@ -1,9 +1,11 @@
-from datetime import datetime
+from datetime import datetime, date
 
+from django import forms
 from django.conf.urls import url
 from django.contrib import admin
 from django.db.models import Max, Prefetch
 from django.http import HttpResponseRedirect
+from django.shortcuts import render
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.translation import ugettext_lazy as _
@@ -396,7 +398,7 @@ has_valid_cc.boolean = True  # type: ignore
 def create_invoices_button(obj):
     if obj.pk:
         return format_html(
-            '<a class="button" href="{}">Create Invoices Now</a>',
+            '<a class="button" href="{}">Create Invoices</a>',
             reverse('admin:billing-create-invoices', args=[obj.pk]),
         )
     else:
@@ -404,6 +406,31 @@ def create_invoices_button(obj):
 
 
 create_invoices_button.short_description = _('Create Invoices')  # type: ignore
+
+
+class CreateInvoicesForm(forms.Form):
+    due_date = forms.DateField()
+
+
+def create_invoices_form(request, account_id):
+    form = CreateInvoicesForm(request.POST or None, initial={'due_date': date.today()})
+    if request.method == 'POST':
+        if form.is_valid():
+            accounts.create_invoices(
+                account_id=account_id,
+                due_date=form.cleaned_data['due_date'])
+            # As confirmation take the user to the account overview.
+            return HttpResponseRedirect(reverse('admin:billing_account_change', args=[account_id]))
+
+    return render(
+        request,
+        'admin/billing/form.html',
+        {
+            'title': 'Create invoices',
+            'form': form,
+            'opts': Account._meta,  # Used to setup the navigation / breadcrumbs of the page
+        }
+    )
 
 
 def do_create_invoices(request, account_id):
@@ -430,7 +457,7 @@ class AccountAdmin(AppendOnlyModelAdmin):
         my_urls = [
             url(
                 r'^(?P<account_id>[0-9a-f-]+)/create_invoices/$',
-                self.admin_site.admin_view(do_create_invoices),
+                self.admin_site.admin_view(create_invoices_form),
                 name='billing-create-invoices'
             )
         ]
