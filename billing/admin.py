@@ -345,12 +345,21 @@ def invoice_last_transaction(obj):
 invoice_last_transaction.short_description = 'Last transaction'  # type: ignore
 
 
+def invoice_account_has_valid_cc(obj):
+    return len(obj.account.valid_credit_card_ids) != 0
+
+
+invoice_account_has_valid_cc.short_description = 'Valid cc'  # type: ignore
+
+invoice_account_has_valid_cc.boolean = True  # type: ignore
+
+
 @admin.register(Invoice)
 class InvoiceAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
-    list_display = [invoice_number, created_on, link_to_account, invoice_last_transaction, 'status', 'due_date',
-                    'total']
-    list_filter = ['status', InvoiceOverdueFilter]
+    list_display = [invoice_number, created_on, link_to_account, invoice_account_has_valid_cc, 'total',
+                    'due_date', invoice_last_transaction, 'status']
+    list_filter = [InvoiceOverdueFilter, 'status']
     search_fields = ['id', 'account__owner__email', 'account__owner__first_name', 'account__owner__last_name']
     ordering = ['-created']
 
@@ -361,7 +370,10 @@ class InvoiceAdmin(AppendOnlyModelAdmin):
     def get_queryset(self, request):
         return super().get_queryset(request) \
             .select_related('account__owner') \
-            .annotate(last_transaction=Max('transactions__created'))
+            .annotate(last_transaction=Max('transactions__created')) \
+            .prefetch_related(Prefetch('account__credit_cards',
+                                       queryset=CreditCard.objects.valid(),
+                                       to_attr='valid_credit_card_ids'))
 
     def get_urls(self):
         custom_urls = [

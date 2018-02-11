@@ -30,7 +30,7 @@ def total_amount(qs) -> Total:
 
 
 ########################################################################################################
-
+# Accounts
 
 class AccountQuerySet(models.QuerySet):
     def open(self):
@@ -83,7 +83,7 @@ class Account(Model):
 
 
 ########################################################################################################
-
+# Invoices
 
 class InvoiceQuerySet(models.QuerySet):
     def payable(self, as_of: date = None) -> QuerySet:
@@ -129,7 +129,7 @@ class Invoice(Model):
 
 
 ########################################################################################################
-
+# Charges
 
 product_code_validator = RegexValidator(regex=r'^[A-Z0-9]{4,10}$',
                                         message='Between 4 and 10 uppercase letters or digits')
@@ -199,7 +199,7 @@ class ProductProperty(Model):
 
 
 ########################################################################################################
-
+# Transactions
 
 class OnlySuccessfulTransactionsManager(models.Manager):
     def get_queryset(self):
@@ -244,7 +244,7 @@ class Transaction(Model):
 
 
 ########################################################################################################
-
+# Credit Cards
 
 def compute_expiry_date(two_digit_year: int, month: int) -> date:
     year = 2000 + two_digit_year
