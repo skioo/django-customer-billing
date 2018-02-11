@@ -48,6 +48,15 @@ class InvoiceTest(TestCase):
         with self.assertNumQueries(1):
             assert invoice.total() == Total(7, 'CHF')
 
+    def test_it_should_compute_the_invoice_total_ignoring_deleted_charges(self):
+        invoice = Invoice.objects.create(account=self.account, due_date=date.today())
+        Charge.objects.create(account=self.account, invoice=invoice, amount=Money(10, 'CHF'), product_code='ACHARGE')
+        Charge.objects.create(account=self.account, invoice=invoice, amount=Money(-3, 'CHF'), product_code='ACREDIT')
+        Charge.objects.create(account=self.account, invoice=invoice, amount=Money(1000, 'CHF'), product_code='ACHARGE',
+                              deleted=True)
+        with self.assertNumQueries(1):
+            assert invoice.total() == Total(7, 'CHF')
+
     def test_it_should_compute_the_invoice_total_in_multiple_currencies(self):
         invoice = Invoice.objects.create(account=self.account, due_date=date.today())
         Charge.objects.create(account=self.account, invoice=invoice, amount=Money(10, 'CHF'), product_code='ACHARGE')
