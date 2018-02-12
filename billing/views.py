@@ -124,7 +124,7 @@ class AccountView(RetrieveAPIView):
                 .prefetch_related('invoices') \
                 .prefetch_related('credit_cards') \
                 .prefetch_related('transactions') \
-                .prefetch_related('charges') \
+                .prefetch_related('charges__product_properties') \
                 .get(owner=self.request.user)
         except Account.DoesNotExist:
             raise Http404('No Account matches the given query.')
