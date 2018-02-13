@@ -75,9 +75,6 @@ class Account(Model):
     def reopen(self):
         pass
 
-    def has_past_due_invoices(self):
-        return Invoice.objects.filter(account=self, status=Invoice.PAST_DUE).exists()
-
     def __str__(self):
         return str(self.owner)
 
