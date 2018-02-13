@@ -6,7 +6,7 @@ from collections import defaultdict
 from django.core.management.base import BaseCommand
 
 from ...actions.invoices import pay_with_account_credit_cards
-from ...models import Invoice
+from ...models import Invoice, CreditCard
 
 
 def set_debug(logger_name):
@@ -34,8 +34,16 @@ class Command(BaseCommand):
 
         dry_run = options['dry_run']
 
-        invoices = Invoice.objects.payable()
-        logger.info('pay-invoices-start', dry_run=dry_run, invoices=len(invoices))
+        all_payable_invoices = Invoice.objects.payable()
+
+        logger.debug('pay-invoice-select', dry_run=dry_run, payable=len(all_payable_invoices))
+
+        # Should replace by a filter, to run in a single sql query
+        invoices = [
+            i for i in all_payable_invoices if CreditCard.objects.valid().filter(account_id=i.account_id).exists()
+        ]
+
+        logger.info('pay-invoices-start', dry_run=dry_run, payable_with_valid_cc=len(invoices))
 
         if dry_run:
             return
