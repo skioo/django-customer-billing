@@ -310,6 +310,25 @@ class InvoiceOverdueFilter(admin.SimpleListFilter):
             return queryset.filter(due_date__gte=today)
 
 
+class InvoiceValidCCFilter(admin.SimpleListFilter):
+    title = _('Valid cc')
+    parameter_name = 'valid_cc'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('yes', _('Yes')),
+            ('no', _('No')),
+            ('all', _('All')),
+        )
+
+    def queryset(self, request, queryset):
+        d = date.today()
+        if self.value() == 'yes':
+            return queryset.filter(account__credit_cards__expiry_date__gte=d)
+        if self.value() == 'no':
+            return queryset.exclude(account__credit_cards__expiry_date__gte=d)
+
+
 def pay_invoice_button(obj):
     if obj.pk and obj.in_payable_state:
         return format_html(
@@ -359,7 +378,7 @@ class InvoiceAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
     list_display = [invoice_number, created_on, link_to_account, invoice_account_has_valid_cc, 'total',
                     'due_date', invoice_last_transaction, 'status']
-    list_filter = [InvoiceOverdueFilter, 'status']
+    list_filter = [InvoiceValidCCFilter, InvoiceOverdueFilter, 'status']
     search_fields = ['id', 'account__owner__email', 'account__owner__first_name', 'account__owner__last_name']
     ordering = ['-created']
 
@@ -395,6 +414,25 @@ class InvoiceInline(admin.TabularInline):
 
 ##############################################################
 # Accounts
+
+class AccountHasValidCCFilter(admin.SimpleListFilter):
+    title = _('Has valid cc')
+    parameter_name = 'Has_valid_cc'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('yes', _('Yes')),
+            ('no', _('No')),
+            ('all', _('All')),
+        )
+
+    def queryset(self, request, queryset):
+        d = date.today()
+        if self.value() == 'yes':
+            return queryset.filter(credit_cards__expiry_date__gte=d)
+        if self.value() == 'no':
+            return queryset.exclude(credit_cards__expiry_date__gte=d)
+
 
 def payable_invoice_count(obj):
     return len(obj.payable_invoice_ids)
@@ -456,7 +494,7 @@ class AccountAdmin(AppendOnlyModelAdmin):
     list_display = ['owner', created_on, modified_on, payable_invoice_count, has_valid_cc, 'currency', 'status']
     search_fields = ['owner__email', 'owner__first_name', 'owner__last_name']
     ordering = ['-created']
-    list_filter = ['currency', 'status']
+    list_filter = [AccountHasValidCCFilter, 'currency', 'status']
     list_select_related = True
 
     raw_id_fields = ['owner']
