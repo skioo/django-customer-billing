@@ -40,7 +40,7 @@ class AccountQuerySet(models.QuerySet):
         return self.filter(charges__deleted=False, charges__amount__gt=0, charges__invoice__isnull=True)
 
     def with_no_charges_since(self, dt: datetime):
-        return self.filter(charges__created__lt=dt)
+        return self.exclude(charges__created__gte=dt)
 
 
 class Account(Model):

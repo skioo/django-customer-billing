@@ -141,13 +141,20 @@ class AccountTest(TestCase):
 
     def test_it_should_filter_accounts_with_no_charges_since(self):
         account1 = Account.objects.create(owner=self.user, currency='CHF')
-        charge1 = Charge.objects.create(account=account1, amount=Money(10, 'CHF'), product_code='ACHARGE')
-        charge1.created = parse_datetime('2001-01-01T01:01:01Z')
-        charge1.save()
+        old_charge_account1 = Charge.objects.create(account=account1, amount=Money(10, 'CHF'), product_code='ACHARGE')
+        old_charge_account1.created = parse_datetime('2001-01-01T01:01:01Z')
+        old_charge_account1.save()
 
         user2 = User.objects.create_user('a-username-2')
         account2 = Account.objects.create(owner=user2, currency='CHF')
         Charge.objects.create(account=account2, amount=Money(15, 'CHF'), product_code='BCHARGE')
+
+        user3 = User.objects.create_user('a-username-3')
+        account3 = Account.objects.create(owner=user3, currency='CHF')
+        old_charge_account3 = Charge.objects.create(account=account3, amount=Money(10, 'CHF'), product_code='CCHARGE')
+        old_charge_account3.created = parse_datetime('2001-01-01T01:01:01Z')
+        old_charge_account3.save()
+        Charge.objects.create(account=account3, amount=Money(15, 'CHF'), product_code='DCHARGE')
 
         with self.assertNumQueries(1):
             quiet_accounts = Account.objects.with_no_charges_since(parse_datetime('2017-01-01T01:01:01Z'))
