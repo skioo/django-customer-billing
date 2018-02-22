@@ -1,16 +1,14 @@
 import logging
 from datetime import timedelta, date
-from typing import Sequence
 
 import progressbar
 import structlog
 from collections import defaultdict
 from django.core.management.base import BaseCommand
-from django.db import transaction
 from django.utils import timezone, dateparse
 
 from ...actions.accounts import create_invoices
-from ...models import Account, Invoice
+from ...models import Account
 
 
 def set_debug(logger_name):
@@ -40,10 +38,9 @@ class Command(BaseCommand):
                                  '0 means invoice all.')
         parser.add_argument('--due-date', type=parse_due_date, default=date.today(),
                             help='The due date of the invoices that are created. Defaults to today')
-        parser.add_argument('--dry-run', action='store_true', dest='dry_run',
-                            help="Goes thru the motions but doesn't create invoices in the database")
-        parser.add_argument('--progress', action='store_true', dest='progress',
-                            help='Displays a progress bar')
+        parser.add_argument('--dry-run', action='store_true',
+                            help='Counts the accounts that will be invoiced and exits')
+        parser.add_argument('--progress', action='store_true', help='Displays a progress bar')
 
     def handle(self, *args, **options):
         if options['verbosity'] >= 2:
@@ -60,7 +57,10 @@ class Command(BaseCommand):
         due_date = options['due_date']
 
         logger.info('create-invoices-start', dry_run=dry_run, quiet_days=quiet_days, due_date=due_date,
-                    accounts_with_uninvoiced_charges=len(accounts))
+                    invoicable_accounts=len(accounts))
+
+        if dry_run:
+            return
 
         if options['progress']:
             bar = progressbar.ProgressBar()
@@ -70,10 +70,7 @@ class Command(BaseCommand):
             stats = defaultdict(lambda: 0)
             for account in accounts:
                 try:
-                    if dry_run:
-                        invoices = pretend_to_create_invoices(account_id=account.pk, due_date=due_date)
-                    else:
-                        invoices = create_invoices(account_id=account.pk, due_date=due_date)
+                    invoices = create_invoices(account_id=account.pk, due_date=due_date)
                     stats_key = '{}_invoices'.format(len(invoices))
                     stats[stats_key] += 1
                 except Exception as ex:
@@ -81,10 +78,3 @@ class Command(BaseCommand):
                     stats['error'] += 1
         finally:
             logger.info('create-invoices-done', **stats)
-
-
-def pretend_to_create_invoices(account_id: str, due_date: date) -> Sequence[Invoice]:
-    with transaction.atomic():
-        invoices = create_invoices(account_id=account_id, due_date=due_date)
-        transaction.set_rollback(True)
-    return invoices
