@@ -7,7 +7,7 @@ from django.db.models import Max, Prefetch
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
-from django.utils.html import format_html
+from django.utils.html import format_html, format_html_join
 from django.utils.translation import ugettext_lazy as _
 from moneyed.localization import format_money
 from structlog import get_logger
@@ -213,7 +213,10 @@ class ProductPropertyInline(admin.TabularInline):
 
 
 def product_properties(obj):
-    return {p.name: p.value for p in obj.product_properties.all()}
+    return format_html_join(
+        ',\n',
+        '<strong>{}</strong>: {}',
+        ((p.name, p.value) for p in obj.product_properties.all()))
 
 
 product_properties.short_description = 'Product props'  # type: ignore
