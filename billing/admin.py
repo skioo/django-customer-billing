@@ -227,7 +227,7 @@ class ChargeAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
     list_display = ['type', created_on, charge_deleted, link_to_account, amount, 'product_code', product_properties,
                     'ad_hoc_label', link_to_invoice]
-    search_fields = ['amount', 'amount_currency', 'product_code', 'product_properties__value', 'ad_hoc_label',
+    search_fields = ['id', 'amount', 'amount_currency', 'product_code', 'product_properties__value', 'ad_hoc_label',
                      'invoice__id'] + account_owner_search_fields
     list_filter = ['deleted', 'amount_currency', 'product_code']
     ordering = ['-created']
@@ -495,7 +495,7 @@ def do_create_invoices(request, account_id):
 class AccountAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
     list_display = ['owner', created_on, modified_on, payable_invoice_count, has_valid_cc, 'currency', 'status']
-    search_fields = ['owner__email', 'owner__first_name', 'owner__last_name']
+    search_fields = ['id', 'owner__email', 'owner__first_name', 'owner__last_name']
     ordering = ['-created']
     list_filter = [AccountHasValidCCFilter, 'currency', 'status']
     list_select_related = True
