@@ -63,7 +63,7 @@ def create_invoices(account_id: str, due_date: date) -> Sequence[Invoice]:
                     uninvoiced_in_currency(account_id=account_id, currency=amount_due.currency) \
                     .update(invoice=invoice)
                 invoices.append(invoice)
-    logger.info('created-invoices', account_id=account_id, invoice_ids=[i.pk for i in invoices])
+    logger.info('created-invoices', account_id=str(account_id), invoice_ids=[i.pk for i in invoices])
     return invoices
 
 
