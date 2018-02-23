@@ -3,25 +3,19 @@ language: python
 matrix:
   include:
   - python: '3.5'
-    env: TOXENV=py35-django201-checkmigrations
-  - python: '3.5'
-    env: TOXENV=py35-django201-flake
-  - python: '3.5'
-    env: TOXENV=py35-django201-mypy
-  - python: '3.5'
-    env: TOXENV=py35-django201-coverage
-  - python: '3.4'
-    env: TOXENV=py34-django111-test
-  - python: '3.5'
     env: TOXENV=py35-django111-test
   - python: '3.6'
     env: TOXENV=py36-django111-test
-  - python: '3.4'
-    env: TOXENV=py34-django201-test
   - python: '3.5'
-    env: TOXENV=py35-django201-test
+    env: TOXENV=py35-django202-test
   - python: '3.6'
-    env: TOXENV=py36-django201-test
+    env: TOXENV=py36-django202-test
+  - python: '3.6'
+    env: TOXENV=py36-django202-checkmigrations
+  - python: '3.6'
+    env: TOXENV=py36-django202-flake
+  - python: '3.6'
+    env: TOXENV=py36-django202-mypy
 install:
 - pip install tox
 script:
