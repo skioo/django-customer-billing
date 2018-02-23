@@ -37,7 +37,7 @@ class AccountQuerySet(models.QuerySet):
         return self.filter(status=Account.OPEN)
 
     def with_uninvoiced_positive_charges(self):
-        return self.filter(charges__deleted=False, charges__amount__gt=0, charges__invoice__isnull=True)
+        return self.filter(charges__deleted=False, charges__amount__gt=0, charges__invoice__isnull=True).distinct()
 
     def with_no_charges_since(self, dt: datetime):
         return self.exclude(charges__created__gte=dt)

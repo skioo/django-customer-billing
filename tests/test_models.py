@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.test import TestCase
+from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from moneyed import Money
 from pytest import raises
@@ -139,7 +140,17 @@ class AccountTest(TestCase):
             assert len(open_with_uninvoiced) == 1
             assert open_with_uninvoiced[0] == account2
 
-    def test_it_should_filter_accounts_with_no_charges_since(self):
+    def test_uninvoiced_positive_charges_should_return_a_single_account_even_if_many_charges(self):
+        account1 = Account.objects.create(owner=self.user, currency='CHF')
+        Charge.objects.create(account=account1, amount=Money(1, 'CHF'), product_code='BCHARGE')
+        Charge.objects.create(account=account1, amount=Money(10, 'CHF'), product_code='CCHARGE')
+
+        with self.assertNumQueries(1):
+            open_with_uninvoiced = Account.objects.with_uninvoiced_positive_charges()
+            assert len(open_with_uninvoiced) == 1
+            assert open_with_uninvoiced[0] == account1
+
+    def test_should_filter_accounts_with_no_charges_since(self):
         account1 = Account.objects.create(owner=self.user, currency='CHF')
         old_charge_account1 = Charge.objects.create(account=account1, amount=Money(10, 'CHF'), product_code='ACHARGE')
         old_charge_account1.created = parse_datetime('2001-01-01T01:01:01Z')
@@ -157,9 +168,19 @@ class AccountTest(TestCase):
         Charge.objects.create(account=account3, amount=Money(15, 'CHF'), product_code='DCHARGE')
 
         with self.assertNumQueries(1):
-            quiet_accounts = Account.objects.with_no_charges_since(parse_datetime('2017-01-01T01:01:01Z'))
-            assert len(quiet_accounts) == 1
-            assert quiet_accounts[0] == account1
+            accounts = Account.objects.with_no_charges_since(parse_datetime('2017-01-01T01:01:01Z'))
+            assert len(accounts) == 1
+            assert accounts[0] == account1
+
+    def test_no_charges_since_should_return_a_single_account_even_if_many_charges(self):
+        account1 = Account.objects.create(owner=self.user, currency='CHF')
+        Charge.objects.create(account=account1, amount=Money(10, 'CHF'), product_code='CCHARGE')
+        Charge.objects.create(account=account1, amount=Money(10, 'CHF'), product_code='DCHARGE')
+
+        with self.assertNumQueries(1):
+            accounts = Account.objects.with_no_charges_since(timezone.now() + timedelta(days=1))
+            assert len(accounts) == 1
+            assert accounts[0] == account1
 
     def test_it_should_compute_the_account_balance(self):
         account = Account.objects.create(owner=self.user, currency='CHF')
