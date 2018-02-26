@@ -157,6 +157,26 @@ class InvoicesActionsTest(TestCase):
         assert account.transactions.count() == 1
         assert account.transactions.first() == payment
 
+    def test_it_should_use_active_credit_cards_before_inactive(self):
+        user = User.objects.create_user('a-username')
+        account = Account.objects.create(owner=user, currency='CHF')
+        psp_credit_card_1111 = MyPSPCreditCard.objects.create(token='atoken')
+        CreditCard.objects.create(account=account, type='VIS',
+                                  number='1111', expiry_month=12, expiry_year=30,
+                                  psp_object=psp_credit_card_1111, status=CreditCard.INACTIVE)
+        psp_credit_card_2222 = MyPSPCreditCard.objects.create(token='btoken')
+        CreditCard.objects.create(account=account, type='VIS',
+                                  number='2222', expiry_month=12, expiry_year=30,
+                                  psp_object=psp_credit_card_2222)
+
+        invoice = Invoice.objects.create(account=account, due_date=date.today())
+        Charge.objects.create(account=account, invoice=invoice, amount=Money(10, 'CHF'), product_code='ACHARGE')
+
+        payment = invoices.pay_with_account_credit_cards(invoice.pk)
+        assert payment
+        assert payment.success
+        assert payment.credit_card_number == '2222'
+
 
 class CreditCardActionsTest(TestCase):
     def setUp(self):

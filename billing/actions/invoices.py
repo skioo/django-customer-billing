@@ -40,7 +40,8 @@ def pay_with_account_credit_cards(invoice_id) -> Optional[Transaction]:
         if amount.amount <= 0:
             raise PreconditionError('Cannot pay invoice with non-positive amount.')
 
-        valid_credit_cards = CreditCard.objects.valid().filter(account=invoice.account)
+        # Try with valid credit cards. Start with the active ones
+        valid_credit_cards = CreditCard.objects.valid().filter(account=invoice.account).order_by('status')
         if not valid_credit_cards:
             raise PreconditionError('No valid credit card on account.')
 
