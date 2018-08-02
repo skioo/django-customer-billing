@@ -21,6 +21,7 @@ PASSWORD_HASHERS = [
 ]
 
 INSTALLED_APPS = [
+    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django_fsm',
@@ -50,4 +51,4 @@ TEMPLATES = [
     },
 ]
 
-DEFAULT_CURRENCY='CHF'
+DEFAULT_CURRENCY = 'CHF'

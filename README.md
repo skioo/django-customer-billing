@@ -7,12 +7,11 @@ django-customer-billing
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 
-
 Requirements
 ------------
 
-* Python: 3.4 and over
-* Django: 1.11 and over
+* Python: 3.5 and over
+* Django: 2.0 and over
 
 
 Usage
@@ -43,7 +42,6 @@ To run tests:
 
     pip install pytest-django
     pytest
-
 
 
 To generate a diagram representing the state-machines:
