@@ -1,5 +1,5 @@
 # Python
-.env
+.direnv
 *.pyc
 __pycache__
 *.egg-info
