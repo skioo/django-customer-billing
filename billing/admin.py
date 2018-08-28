@@ -6,7 +6,7 @@ from django.contrib import admin
 from django.db.models import Max, Prefetch
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
-from django.urls import reverse
+from django.urls import reverse, NoReverseMatch
 from django.utils.html import format_html, format_html_join
 from django.utils.translation import ugettext_lazy as _
 from moneyed.localization import format_money
@@ -92,12 +92,15 @@ modified_on.short_description = 'modified'  # type: ignore
 
 def psp_admin_link(obj):
     text = '{}: {}'.format(obj.psp_content_type.name, obj.psp_object_id)
-    url = reverse(
-        'admin:{}_{}_change'.format(
-            obj.psp_content_type.app_label,
-            obj.psp_content_type.model),
-        args=[obj.psp_object_id])
-    return format_html('<a href="{}">{}</a>', url, text)
+    try:
+        url = reverse(
+            'admin:{}_{}_change'.format(
+                obj.psp_content_type.app_label,
+                obj.psp_content_type.model),
+            args=[obj.psp_object_id])
+        return format_html('<a href="{}">{}</a>', url, text)
+    except NoReverseMatch:
+        return None
 
 
 psp_admin_link.short_description = 'PSP Object'  # type: ignore
