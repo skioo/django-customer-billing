@@ -12,6 +12,7 @@ from django.db import transaction
 from moneyed import Money
 from structlog import get_logger
 
+from billing.signals import invoice_ready
 from ..models import Account, Charge, Invoice, ProductProperty
 
 logger = get_logger()
@@ -50,6 +51,7 @@ def create_invoices(account_id: str, due_date: date) -> Sequence[Invoice]:
     Creates the invoices for any uninvoiced charges in the account.
     Creates one invoice per currency (only when the total in that currency is positive).
 
+    :param due_date: The date when the invoices will be due.
     :param account_id: The account to invoice.
     :return: A possibly-empty list of Invoices.
     """
@@ -64,6 +66,8 @@ def create_invoices(account_id: str, due_date: date) -> Sequence[Invoice]:
                     .update(invoice=invoice)
                 invoices.append(invoice)
     logger.info('created-invoices', account_id=str(account_id), invoice_ids=[i.pk for i in invoices])
+    for invoice in invoices:
+        invoice_ready.send(sender=create_invoices, invoice=invoice)
     return invoices
 
 

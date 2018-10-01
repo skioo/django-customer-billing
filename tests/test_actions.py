@@ -9,7 +9,9 @@ from pytest import raises
 from billing.actions import accounts, invoices, credit_cards, charges
 from billing.models import Account, Charge, CreditCard, Invoice
 from billing.psp import register, unregister
+from billing.signals import invoice_ready
 from billing.total import Total
+from .helper import catch_signal
 from .models import MyPSPCreditCard
 from .my_psp import MyPSP
 
@@ -56,12 +58,17 @@ class AccountActionsTest(TestCase):
     def test_it_should_not_create_an_invoice_when_no_money_is_due(self):
         Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
         Charge.objects.create(account=self.account, amount=Money(-10, 'CHF'), product_code='ACREDIT')
-        assert not accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
+        with catch_signal(invoice_ready) as signal_handler:
+            assert not accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
+        assert signal_handler.call_count == 0
 
     def test_it_should_create_an_invoice_when_money_is_due(self):
         Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
         Charge.objects.create(account=self.account, amount=Money(-3, 'CHF'), product_code='ACREDIT')
-        invoices = accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
+
+        with catch_signal(invoice_ready) as signal_handler:
+            invoices = accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
+        assert signal_handler.call_count == 1
         assert len(invoices) == 1
         invoice = invoices[0]
         assert invoice.total() == Total(7, 'CHF')
@@ -73,7 +80,11 @@ class AccountActionsTest(TestCase):
     def test_it_should_handle_multicurrency_univoiced_charges(self):
         Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='10CHF')
         Charge.objects.create(account=self.account, amount=Money(30, 'EUR'), product_code='30EURO')
-        invoices = accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
+
+        with catch_signal(invoice_ready) as signal_handler:
+            invoices = accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
+        assert signal_handler.call_count == 2
+
         assert len(invoices) == 2
 
         # For some reason the output is always sorted. This makes asserting easy
