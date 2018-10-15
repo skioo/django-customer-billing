@@ -17,6 +17,7 @@ setup(
         'billing.actions',
         'billing.migrations',
         'billing.management.commands',
+        'billing.signals',
     ],
     package_data={'billing': [
         'templates/admin/billing/*.html',
