@@ -48,3 +48,8 @@ To generate a diagram representing the state-machines:
 
     pip install graphviz
     ./manage.py graph_transitions -o docs/state-machines.png
+
+
+To install the version being developed into another django project:
+
+    pip install -e <path-to-this-directory>

@@ -50,7 +50,8 @@ class AppendOnlyModelAdmin(admin.ModelAdmin):
         # Disable delete action (unless superuser)
         actions = super().get_actions(request)
         if not request.user.is_superuser:
-            del actions['delete_selected']
+            if 'delete_selected' in actions:
+                del actions['delete_selected']
         return actions
 
     def has_delete_permission(self, request, obj=None):
