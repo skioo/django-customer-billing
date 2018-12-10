@@ -121,7 +121,7 @@ class InvoicesActionsTest(TestCase):
                                   psp_object=psp_credit_card)
         invoice = Invoice.objects.create(account=account, due_date=date.today())
 
-        with raises(invoices.PreconditionError, match='Cannot pay empty invoice\.'):
+        with raises(invoices.PreconditionError, match='Cannot pay empty invoice\\.'):
             invoices.pay_with_account_credit_cards(invoice.pk)
 
     def test_it_should_prevent_paying_an_already_paid_invoice(self):
@@ -129,7 +129,7 @@ class InvoicesActionsTest(TestCase):
         account = Account.objects.create(owner=user, currency='CHF')
         invoice = Invoice.objects.create(account=account, due_date=date.today(), status=Invoice.PAID)
 
-        with raises(invoices.PreconditionError, match='Cannot pay invoice with status PAID\.'):
+        with raises(invoices.PreconditionError, match='Cannot pay invoice with status PAID\\.'):
             invoices.pay_with_account_credit_cards(invoice.pk)
 
     def test_it_should_not_attempt_payment_when_no_valid_credit_card(self):
@@ -142,7 +142,7 @@ class InvoicesActionsTest(TestCase):
         invoice = Invoice.objects.create(account=account, due_date=date.today())
         Charge.objects.create(account=account, invoice=invoice, amount=Money(10, 'CHF'), product_code='ACHARGE')
 
-        with raises(invoices.PreconditionError, match='No valid credit card on account\.'):
+        with raises(invoices.PreconditionError, match='No valid credit card on account\\.'):
             invoices.pay_with_account_credit_cards(invoice.pk)
 
     def test_it_should_pay_when_all_is_right(self):
