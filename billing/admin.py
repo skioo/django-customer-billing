@@ -21,7 +21,6 @@ logger = get_logger()
 ##############################################################
 # Shared utilities
 
-
 class AppendOnlyModelAdmin(admin.ModelAdmin):
     """
     Adapted from: https://gist.github.com/aaugustin/1388243
@@ -59,12 +58,6 @@ class AppendOnlyModelAdmin(admin.ModelAdmin):
         return request.user.is_superuser
 
 
-class ReadOnlyModelAdmin(AppendOnlyModelAdmin):
-    def has_add_permission(self, request, obj=None):
-        # Disable add link on admin menu and on list view (unless superuser)
-        return request.user.is_superuser
-
-
 account_owner_search_fields = ['account__owner__email', 'account__owner__first_name', 'account__owner__last_name']
 
 
@@ -92,6 +85,9 @@ modified_on.short_description = 'modified'  # type: ignore
 
 
 def psp_admin_link(obj):
+    if obj.psp_content_type is None or obj.psp_object_id is None:
+        return '-'
+
     text = '{}: {}'.format(obj.psp_content_type.name, obj.psp_object_id)
     try:
         url = reverse(
@@ -171,7 +167,7 @@ credit_card_is_valid.short_description = 'valid'  # type: ignore
 
 
 @admin.register(CreditCard)
-class CreditCardAdmin(ReadOnlyModelAdmin):
+class CreditCardAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
     list_display = ['number', created_on, link_to_account, 'type', 'status', credit_card_expiry,
                     credit_card_is_valid,
@@ -270,7 +266,7 @@ class ChargeInline(admin.TabularInline):
 # Transactions
 
 @admin.register(Transaction)
-class TransactionAdmin(ReadOnlyModelAdmin):
+class TransactionAdmin(AppendOnlyModelAdmin):
     verbose_name_plural = 'Transactions'
     date_hierarchy = 'created'
     list_display = ['type', created_on, link_to_account, 'payment_method', 'credit_card_number', 'success',

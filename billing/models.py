@@ -1,9 +1,8 @@
 import calendar
+import re
 import uuid
 from datetime import date, datetime
-from typing import List, Tuple
 
-import re
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -16,6 +15,7 @@ from django.utils.translation import ugettext_lazy as _
 from django_fsm import FSMField, can_proceed, transition
 from djmoney.models.fields import CurrencyField, MoneyField
 from moneyed import Money
+from typing import List, Tuple
 
 from .total import Total
 
@@ -218,8 +218,8 @@ class Transaction(Model):
     payment_method = models.CharField(db_index=True, max_length=3)
     credit_card_number = models.CharField(max_length=255, blank=True)
 
-    psp_content_type = models.ForeignKey(ContentType, on_delete=CASCADE)
-    psp_object_id = models.UUIDField(db_index=True)
+    psp_content_type = models.ForeignKey(ContentType, blank=True, null=True, on_delete=CASCADE)
+    psp_object_id = models.UUIDField(blank=True, null=True, db_index=True)
     psp_object = GenericForeignKey('psp_content_type', 'psp_object_id')
 
     objects = models.Manager()
