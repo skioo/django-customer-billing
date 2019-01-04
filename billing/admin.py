@@ -284,7 +284,7 @@ class TransactionAdmin(AppendOnlyModelAdmin):
 class TransactionInline(admin.TabularInline):
     model = Transaction
     fields = readonly_fields = ['type', 'payment_method', 'credit_card_number', created_on, 'success', amount,
-                                psp_admin_link]
+                                link_to_invoice, psp_admin_link]
     show_change_link = True
     can_delete = False
     extra = 0
@@ -379,7 +379,7 @@ invoice_account_has_valid_cc.boolean = True  # type: ignore
 @admin.register(Invoice)
 class InvoiceAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
-    list_display = [invoice_number, created_on, link_to_account, invoice_account_has_valid_cc, 'total',
+    list_display = [invoice_number, created_on, modified_on, link_to_account, invoice_account_has_valid_cc, 'total',
                     'due_date', invoice_last_transaction, 'status']
     list_filter = [InvoiceValidCCFilter, InvoiceOverdueFilter, 'status']
     search_fields = ['id', 'account__owner__email', 'account__owner__first_name', 'account__owner__last_name']
