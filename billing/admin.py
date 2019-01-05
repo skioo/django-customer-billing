@@ -379,14 +379,14 @@ invoice_account_has_valid_cc.boolean = True  # type: ignore
 @admin.register(Invoice)
 class InvoiceAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
-    list_display = [invoice_number, created_on, modified_on, link_to_account, invoice_account_has_valid_cc, 'total',
-                    'due_date', invoice_last_transaction, 'status']
+    list_display = [invoice_number, created_on, modified_on, link_to_account, invoice_account_has_valid_cc,
+                    'total', 'due', 'due_date', invoice_last_transaction, 'status']
     list_filter = [InvoiceValidCCFilter, InvoiceOverdueFilter, 'status']
     search_fields = ['id', 'account__owner__email', 'account__owner__first_name', 'account__owner__last_name']
     ordering = ['-created']
 
     raw_id_fields = ['account']
-    readonly_fields = ['created', 'modified', 'total', pay_invoice_button]
+    readonly_fields = ['created', 'modified', 'total', 'due', pay_invoice_button]
     inlines = [ChargeInline, TransactionInline]
 
     def get_queryset(self, request):
