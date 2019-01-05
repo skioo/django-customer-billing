@@ -121,6 +121,10 @@ class Invoice(Model):
     def total(self):
         return total_amount(Charge.objects.filter(invoice=self))
 
+    def due(self):
+        invoice_transactions = Transaction.successful.filter(invoice=self)
+        return self.total() - total_amount(invoice_transactions)
+
     def __str__(self):
         return '#{}'.format(self.id)
 

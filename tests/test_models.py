@@ -65,6 +65,24 @@ class InvoiceTest(TestCase):
         with self.assertNumQueries(1):
             assert invoice.total() == Total(10, 'CHF', -3, 'EUR')
 
+    def test_it_should_compute_the_invoice_due(self):
+        invoice = Invoice.objects.create(account=self.account, due_date=date.today())
+        Charge.objects.create(account=self.account, invoice=invoice, amount=Money(10, 'CHF'), product_code='ACHARGE')
+        Transaction.objects.create(account=self.account, invoice=invoice, amount=Money(8, 'CHF'), success=True)
+        with self.assertNumQueries(1):
+            assert invoice.total() == Total(10, 'CHF')
+        with self.assertNumQueries(2):
+            assert invoice.due() == Total(2, 'CHF')
+
+    def test_it_should_compute_the_invoice_due_when_overpayment(self):
+        invoice = Invoice.objects.create(account=self.account, due_date=date.today())
+        Charge.objects.create(account=self.account, invoice=invoice, amount=Money(10, 'CHF'), product_code='ACHARGE')
+        Transaction.objects.create(account=self.account, invoice=invoice, amount=Money(15, 'CHF'), success=True)
+        with self.assertNumQueries(1):
+            assert invoice.total() == Total(10, 'CHF')
+        with self.assertNumQueries(2):
+            assert invoice.due() == Total(-5, 'CHF')
+
 
 class CreditCardTest(TestCase):
     def test_it_can_filter_valid_credit_cards(self):
