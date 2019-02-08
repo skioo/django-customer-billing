@@ -37,12 +37,19 @@ Development
 To install all dependencies:
 
     python setup.py develop
+    
+To update all dependencies:
 
-To run tests:
+    python setup.py develop -U
+
+To run unit tests:
 
     pip install pytest-django
     pytest
 
+To lint, typecheck, unit test:
+
+    tox
 
 To generate a diagram representing the state-machines:
 

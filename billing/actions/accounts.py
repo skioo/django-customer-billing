@@ -53,6 +53,7 @@ def create_invoices(account_id: str, due_date: date) -> Sequence[Invoice]:
 
     :param due_date: The date when the invoices will be due.
     :param account_id: The account to invoice.
+    :param due_date: The due date for any invoice that gets created.
     :return: A possibly-empty list of Invoices.
     """
     invoices = []
@@ -71,7 +72,8 @@ def create_invoices(account_id: str, due_date: date) -> Sequence[Invoice]:
     return invoices
 
 
-def add_charge(account_id: str, amount: Money,
+def add_charge(account_id: str,
+               amount: Money,
                reverses_id: Optional[str] = None,
                product_code: Optional[str] = None,
                product_properties: Optional[Dict[str, str]] = None) -> Charge:
@@ -80,10 +82,10 @@ def add_charge(account_id: str, amount: Money,
 
     :param account_id: The account on which to add the charge
     :param amount:  The amount of the charge
+    :param reverses_id: Set this if this charge reverses another one
     :param product_code: A code identifying the type of product cnarged
     :param product_properties: A dict of hames and values.
-    :param ad_hoc_label:
-    :return: The newly created charge
+    :return: The newly created charge.
     """
     logger.info('adding-charge', account_id=account_id, amount=amount, product_code=product_code,
                 product_properties=product_properties)
