@@ -42,6 +42,9 @@ class AccountQuerySet(models.QuerySet):
     def with_no_charges_since(self, dt: datetime):
         return self.exclude(charges__created__gte=dt)
 
+    def with_pending_invoices(self):
+        return self.filter(invoices__status=Invoice.PENDING).distinct()
+
 
 class Account(Model):
     OPEN = 'OPEN'
@@ -136,17 +139,40 @@ product_code_validator = RegexValidator(regex=r'^[A-Z0-9]{4,10}$',
                                         message='Between 4 and 10 uppercase letters or digits')
 
 
+class ChargeQuerySet(models.QuerySet):
+    def uninvoiced(self, account_id: str) -> QuerySet:
+        return self.filter(invoice=None, account_id=account_id)
+
+    def charges(self) -> QuerySet:
+        return self.filter(amount__gt=0)
+
+    def credits(self) -> QuerySet:
+        return self.filter(amount__lt=0)
+
+    def in_currency(self, currency: str) -> QuerySet:
+        return self.filter(amount_currency=currency)
+
+
 class ChargeManager(models.Manager):
 
     def get_queryset(self):
-        return super().get_queryset().exclude(deleted=True)
+        return ChargeQuerySet(self.model, using=self._db).exclude(deleted=True)
+
+    def uninvoiced(self, account_id: str) -> QuerySet:
+        return self.get_queryset().uninvoiced(account_id)
+
+    def charges(self) -> QuerySet:
+        return self.get_queryset().charges()
+
+    def credits(self) -> QuerySet:
+        return self.get_queryset().credits()
+
+    def in_currency(self, currency: str) -> QuerySet:
+        return self.get_queryset().in_currency(currency)
 
     def uninvoiced_with_total(self, account_id: str) -> Tuple[List, Total]:
-        uc = Charge.objects.filter(invoice=None, account_id=account_id)
+        uc = self.get_queryset().uninvoiced(account_id)
         return list(uc), total_amount(uc)
-
-    def uninvoiced_in_currency(self, account_id: str, currency: str) -> QuerySet:
-        return Charge.objects.filter(invoice=None, account_id=account_id, amount_currency=currency)
 
 
 class Charge(Model):
@@ -202,9 +228,35 @@ class ProductProperty(Model):
 ########################################################################################################
 # Transactions
 
+class TransactionQuerySet(models.QuerySet):
+    def uninvoiced(self, account_id: str) -> QuerySet:
+        return self.filter(invoice=None, account_id=account_id)
+
+    def payments(self) -> QuerySet:
+        return self.filter(amount__gt=0)
+
+    def refunds(self) -> QuerySet:
+        return self.filter(amount__lt=0)
+
+    def in_currency(self, currency: str) -> QuerySet:
+        return self.filter(amount_currency=currency)
+
+
 class OnlySuccessfulTransactionsManager(models.Manager):
     def get_queryset(self):
-        return super().get_queryset().filter(success=True)
+        return TransactionQuerySet(self.model, using=self._db).filter(success=True)
+
+    def uninvoiced(self, account_id: str) -> QuerySet:
+        return self.get_queryset().uninvoiced(account_id)
+
+    def payments(self) -> QuerySet:
+        return self.get_queryset().payments()
+
+    def refunds(self) -> QuerySet:
+        return self.get_queryset().refunds()
+
+    def in_currency(self, currency: str) -> QuerySet:
+        return self.get_queryset().in_currency(currency)
 
 
 class Transaction(Model):

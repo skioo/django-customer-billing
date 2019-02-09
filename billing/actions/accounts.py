@@ -62,8 +62,9 @@ def create_invoices(account_id: str, due_date: date) -> Sequence[Invoice]:
         for amount_due in total.monies():
             if amount_due.amount > 0:
                 invoice = Invoice.objects.create(account_id=account_id, due_date=due_date)
-                Charge.objects. \
-                    uninvoiced_in_currency(account_id=account_id, currency=amount_due.currency) \
+                Charge.objects \
+                    .uninvoiced(account_id=account_id) \
+                    .in_currency(currency=amount_due.currency) \
                     .update(invoice=invoice)
                 invoices.append(invoice)
     logger.info('created-invoices', account_id=str(account_id), invoice_ids=[i.pk for i in invoices])

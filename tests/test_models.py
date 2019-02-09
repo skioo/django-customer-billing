@@ -19,6 +19,32 @@ class InvoiceTest(TestCase):
         user = User.objects.create_user('a-username')
         self.account = Account.objects.create(owner=user, currency='CHF')
 
+    def test_payments_should_ignore_refunds(self):
+        Transaction.objects.create(account=self.account, success=True, amount=Money(-10, 'CHF'))
+        with self.assertNumQueries(1):
+            qs = Transaction.successful.payments()
+            assert not qs.exists()
+
+    def test_in_currency(self):
+        Transaction.objects.create(account=self.account, success=True, amount=Money(10, 'CHF'))
+        Transaction.objects.create(account=self.account, success=True, amount=Money(20, 'EUR'))
+        with self.assertNumQueries(1):
+            result = list(Transaction.successful.in_currency('CHF'))
+            assert len(result) == 1
+            assert result[0].amount_currency == 'CHF'
+
+    def test_uninvoiced_paymnents_should_return_uninvoiced_payment(self):
+        Transaction.objects.create(account=self.account, success=True, amount=Money(10, 'CHF'))
+        with self.assertNumQueries(1):
+            qs = Transaction.successful.uninvoiced(account_id=self.account.pk).payments()
+            assert qs.exists()
+
+    def test_uninvoiced_payments_should_ignore_invoiced_transactions(self):
+        Transaction.objects.create(account=self.account, success=True, invoice_id=1, amount=Money(10, 'CHF'))
+        with self.assertNumQueries(1):
+            qs = Transaction.successful.uninvoiced(account_id=self.account.pk).payments()
+            assert not qs.exists()
+
     def test_it_should_determine_if_the_invoice_is_payable(self):
         invoice1 = Invoice.objects.create(account=self.account, status=Invoice.PENDING, due_date=date.today())
         with self.assertNumQueries(0):
@@ -238,20 +264,40 @@ class AccountTest(TestCase):
         with self.assertNumQueries(2):
             assert account.balance() == Total(-10, 'CHF', 3, 'EUR')
 
+    def test_it_should_select_accounts_with_pending_invoices(self):
+        Account.objects.create(owner=self.user, currency='CHF')
+        user2 = User.objects.create_user('user2')
+        account2 = Account.objects.create(owner=user2, currency='CHF')
+        Invoice.objects.create(account=account2, due_date=date.today())
+        user3 = User.objects.create_user('user3')
+        account3 = Account.objects.create(owner=user3, currency='CHF')
+        Invoice.objects.create(account=account3, due_date=date.today(), status=Invoice.PAID)
+        with self.assertNumQueries(1):
+            accounts = list(Account.objects.with_pending_invoices().values_list('id', flat=True))
+        assert accounts == [account2.id]
+
 
 class ChargeTest(TestCase):
     def setUp(self):
         user = User.objects.create_user('a-username')
         self.account = Account.objects.create(owner=user, currency='CHF')
 
-    def test_uninvoiced_charges_should_ignore_invoiced_charges(self):
+    def test_in_currency(self):
+        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
+        Charge.objects.create(account=self.account, deleted=True, amount=Money(5, 'EUR'), product_code='BCHARGE')
+        with self.assertNumQueries(1):
+            result = list(Charge.objects.in_currency(currency='CHF'))
+            assert len(result) == 1
+            assert result[0].amount_currency == 'CHF'
+
+    def test_uninvoiced_should_ignore_invoiced_charges(self):
         Charge.objects.create(account=self.account, invoice_id=1, amount=Money(10, 'CHF'), product_code='ACHARGE')
         with self.assertNumQueries(2):
             uc, total = Charge.objects.uninvoiced_with_total(account_id=self.account.pk)
             assert uc == []
             assert total == Total()
 
-    def test_uninvoiced_charges_should_consider_credits(self):
+    def test_uninvoiced_should_consider_credits(self):
         Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
         Charge.objects.create(account=self.account, amount=Money(-30, 'CHF'), product_code='ACREDIT')
         with self.assertNumQueries(2):
@@ -259,7 +305,7 @@ class ChargeTest(TestCase):
             assert len(uc) == 2
             assert total == Total(-20, 'CHF')
 
-    def test_uninvoiced_charges_can_be_in_multiple_currencies(self):
+    def test_uninvoiced_can_be_in_multiple_currencies(self):
         Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
         Charge.objects.create(account=self.account, amount=Money(-30, 'EUR'), product_code='ACREDIT')
         with self.assertNumQueries(2):
@@ -267,7 +313,7 @@ class ChargeTest(TestCase):
             assert len(uc) == 2
             assert total == Total(10, 'CHF', -30, 'EUR')
 
-    def test_uninvoiced_charges_should_ignore_deleted_charges(self):
+    def test_uninvoiced_should_ignore_deleted_charges(self):
         Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
         Charge.objects.create(account=self.account, deleted=True, amount=Money(5, 'CHF'), product_code='BCHARGE')
         with self.assertNumQueries(2):
