@@ -332,19 +332,36 @@ class InvoiceValidCCFilter(admin.SimpleListFilter):
             return queryset.exclude(account__credit_cards__expiry_date__gte=d)
 
 
-def pay_invoice_button(obj):
+def assign_funds_to_invoice_button(obj):
     if obj.pk and obj.in_payable_state:
         return format_html(
-            '<a href="{}">Pay Now</a>',
-            reverse('admin:billing-pay-invoice', args=[obj.pk]))
+            '<a href="{}">Assign existing funds to invoice</a>',
+            reverse('admin:billing-assign-funds-to-invoice', args=[obj.pk]))
     else:
         return '-'
 
 
-pay_invoice_button.short_description = _('Pay Invoice')  # type: ignore
+assign_funds_to_invoice_button.short_description = _('Assign funds')  # type: ignore
 
 
-def do_pay_invoice(request, invoice_id):
+def do_assign_funds_to_invoice(request, invoice_id):
+    accounts.assign_funds_to_invoice(invoice_id)
+    return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+
+def pay_invoice_with_cc_button(obj):
+    if obj.pk and obj.in_payable_state:
+        return format_html(
+            '<a href="{}">Pay invoice with CC</a>',
+            reverse('admin:billing-pay-invoice-with-cc', args=[obj.pk]))
+    else:
+        return '-'
+
+
+pay_invoice_with_cc_button.short_description = _('Pay')  # type: ignore
+
+
+def do_pay_invoice_with_cc(request, invoice_id):
     invoices.pay_with_account_credit_cards(invoice_id)
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
@@ -386,7 +403,8 @@ class InvoiceAdmin(AppendOnlyModelAdmin):
     ordering = ['-created']
 
     raw_id_fields = ['account']
-    readonly_fields = ['created', 'modified', 'total', 'due', pay_invoice_button]
+    readonly_fields = ['created', 'modified', 'total', 'due', assign_funds_to_invoice_button,
+                       pay_invoice_with_cc_button]
     inlines = [ChargeInline, TransactionInline]
 
     def get_queryset(self, request):
@@ -399,9 +417,12 @@ class InvoiceAdmin(AppendOnlyModelAdmin):
 
     def get_urls(self):
         custom_urls = [
+            url(r'^(?P<invoice_id>[0-9a-f-]+)/assign_funds_to_invoice/$',
+                self.admin_site.admin_view(do_assign_funds_to_invoice),
+                name='billing-assign-funds-to-invoice'),
             url(r'^(?P<invoice_id>[0-9a-f-]+)/pay/$',
-                self.admin_site.admin_view(do_pay_invoice),
-                name='billing-pay-invoice'),
+                self.admin_site.admin_view(do_pay_invoice_with_cc),
+                name='billing-pay-invoice-with-cc')
         ]
         return custom_urls + super().get_urls()
 
@@ -491,6 +512,24 @@ def do_create_invoices(request, account_id):
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
 
+def assign_funds_to_pending_invoices_button(obj):
+    if obj.pk:
+        return format_html(
+            '<a class="button" href="{}">Assign existing funds to pending invoices</a>',
+            reverse('admin:billing-assign-funds-to-pending-invoices', args=[obj.pk]),
+        )
+    else:
+        return '-'
+
+
+assign_funds_to_pending_invoices_button.short_description = _('Assign funds')  # type: ignore
+
+
+def do_assign_funds_to_pending_invoices(request, account_id):
+    accounts.assign_funds_to_pending_invoices(account_id=account_id)
+    return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+
 @admin.register(Account)
 class AccountAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
@@ -501,7 +540,8 @@ class AccountAdmin(AppendOnlyModelAdmin):
     list_select_related = True
 
     raw_id_fields = ['owner']
-    readonly_fields = ['balance', 'created', 'modified', create_invoices_button]
+    readonly_fields = ['balance', 'created', 'modified', create_invoices_button,
+                       assign_funds_to_pending_invoices_button]
 
     inlines = [CreditCardInline, ChargeInline, InvoiceInline, TransactionInline]
 
@@ -512,6 +552,10 @@ class AccountAdmin(AppendOnlyModelAdmin):
                 r'^(?P<account_id>[0-9a-f-]+)/create_invoices/$',
                 self.admin_site.admin_view(create_invoices_form),
                 name='billing-create-invoices'
+            ), url(
+                r'^(?P<account_id>[0-9a-f-]+)/assign_funds_to_pending_invoices/$',
+                self.admin_site.admin_view(do_assign_funds_to_pending_invoices),
+                name='billing-assign-funds-to-pending-invoices'
             )
         ]
         return my_urls + urls
