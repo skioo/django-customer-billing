@@ -160,7 +160,7 @@ class Charge(Model):
     invoice = models.ForeignKey(Invoice, null=True, blank=True, related_name='items', on_delete=SET_NULL)
     amount = MoneyField(max_digits=12, decimal_places=2)
     ad_hoc_label = models.TextField(blank=True, help_text='When not empty, this is shown verbatim to the user.')
-    product_code = models.CharField(max_length=10, blank=True, validators=[product_code_validator], db_index=True,
+    product_code = models.CharField(max_length=20, blank=True, validators=[product_code_validator], db_index=True,
                                     help_text='Identifies the kind of product being charged or credited')
     reverses = models.OneToOneField('self', null=True, blank=True, related_name='reversed_by', on_delete=PROTECT)
     deleted = models.BooleanField(default=False, db_index=True)
