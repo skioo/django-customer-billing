@@ -15,7 +15,7 @@ class AccountViewTest(TestCase):
         client = APIClient()
         client.force_authenticate(user111)
 
-        with self.assertNumQueries(10):
+        with self.assertNumQueries(14):
             response = client.get(reverse('billing_account'))
         assert response.status_code == HTTP_200_OK
         assert response.json() == {
@@ -59,14 +59,16 @@ class AccountViewTest(TestCase):
                     'modified': '2017-10-22T17:22:22.090000-05:00',
                     'due_date': '2017-10-22',
                     'status': 'PENDING',
-                    'total': [{'amount': '15.00', 'amount_currency': 'USD'}]
+                    'total': [{'amount': '15.00', 'amount_currency': 'USD'}],
+                    'due': [{'amount': '15.00', 'amount_currency': 'USD'}]
                 }, {
                     'id': 2,
                     'created': '2017-10-21T04:47:14.554000-05:00',
                     'modified': '2017-10-22T17:22:22.090000-05:00',
                     'due_date': '2017-10-22',
                     'status': 'PENDING',
-                    'total': []
+                    'total': [],
+                    'due': []
                 }
             ]
         }
@@ -76,7 +78,7 @@ class AccountViewTest(TestCase):
         client = APIClient()
         client.force_authenticate(user222)
 
-        with self.assertNumQueries(9):
+        with self.assertNumQueries(11):
             response = client.get(reverse('billing_account'))
         assert response.status_code == HTTP_200_OK
         assert response.json()['charges'][0] == {

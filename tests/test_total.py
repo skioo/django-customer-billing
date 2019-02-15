@@ -3,7 +3,7 @@ from unittest import TestCase
 from moneyed import Money
 from pytest import raises
 
-from billing.total import Total, TotalSerializer
+from billing.total import Total, TotalSerializer, TotalIncludingZeroSerializer
 
 
 class TotalTest(TestCase):
@@ -117,15 +117,24 @@ class TotalTest(TestCase):
 class TotalSerializerTest(TestCase):
     def test_serialize(self):
         t = Total(100, 'USD', -90, 'EUR')
-        serializer = TotalSerializer(t)
-        assert serializer.data == [
+        assert TotalSerializer(t).data == [
             {'amount': '100.00', 'amount_currency': 'USD'},
             {'amount': '-90.00', 'amount_currency': 'EUR'}
         ]
 
     def test_zero_value(self):
+        t = Total(0, 'EUR')
+        assert TotalSerializer(t).data == []
+        assert TotalIncludingZeroSerializer(t).data == [
+            {'amount': '0.00', 'amount_currency': 'EUR'}
+        ]
+
+    def test_zero_and_nonzero_values(self):
         t = Total(100, 'USD', 0, 'EUR')
-        serializer = TotalSerializer(t)
-        assert serializer.data == [
+        assert TotalSerializer(t).data == [
+            {'amount': '100.00', 'amount_currency': 'USD'}
+        ]
+        assert TotalIncludingZeroSerializer(t).data == [
             {'amount': '100.00', 'amount_currency': 'USD'},
+            {'amount': '0.00', 'amount_currency': 'EUR'}
         ]

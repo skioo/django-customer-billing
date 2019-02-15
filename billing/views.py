@@ -6,7 +6,7 @@ from rest_framework.mixins import UpdateModelMixin, RetrieveModelMixin, ListMode
 from rest_framework.viewsets import GenericViewSet
 
 from .models import Account, Charge, CreditCard, Invoice, Transaction, ProductProperty
-from .total import TotalSerializer
+from .total import TotalSerializer, TotalIncludingZeroSerializer
 
 
 class CreditCardSerializer(serializers.ModelSerializer):
@@ -90,6 +90,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 
 class InvoiceSerializer(serializers.ModelSerializer):
     total = TotalSerializer(read_only=True)
+    due = TotalIncludingZeroSerializer(read_only=True)
 
     class Meta:
         model = Invoice

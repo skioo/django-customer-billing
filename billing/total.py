@@ -138,3 +138,16 @@ class TotalSerializer(serializers.BaseSerializer):
         # So we replicate the output.
         return [{'amount': TotalSerializer.amount_serializer.to_representation(money.amount),
                  'amount_currency': money.currency.code} for money in obj.nonzero_monies()]
+
+
+class TotalIncludingZeroSerializer(serializers.BaseSerializer):
+    """
+    Totals are serialized as a list of money instances.
+    """
+    amount_serializer = DecimalField(max_digits=12, decimal_places=2)
+
+    def to_representation(self, obj):
+        # We cannot use djmoney.contrib.django_rest_framework.MoneyField because a total is not a field.
+        # So we replicate the output.
+        return [{'amount': TotalSerializer.amount_serializer.to_representation(money.amount),
+                 'amount_currency': money.currency.code} for money in obj.monies()]
