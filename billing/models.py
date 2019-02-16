@@ -2,6 +2,7 @@ import calendar
 import re
 import uuid
 from datetime import date, datetime
+from typing import List, Tuple
 
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -15,7 +16,6 @@ from django.utils.translation import ugettext_lazy as _
 from django_fsm import FSMField, can_proceed, transition
 from djmoney.models.fields import CurrencyField, MoneyField
 from moneyed import Money
-from typing import List, Tuple
 
 from .total import Total
 
@@ -121,12 +121,23 @@ class Invoice(Model):
     def in_payable_state(self):
         return can_proceed(self.pay)
 
-    def total(self):
-        return total_amount(Charge.objects.filter(invoice=self))
+    def total_charges(self):
+        """
+        The sum of all charges (including credits).
+        Should most likely be changed to something more precise.
+        """
+        invoice_charges = Charge.objects.filter(invoice=self)
+        return total_amount(invoice_charges)
 
     def due(self):
+        """
+        The amount due for this invoice.
+        Takes into account all entities in the invoice.
+        Can be < 0 if the invoice was overpaid.
+        """
+        invoice_charges = Charge.objects.filter(invoice=self)
         invoice_transactions = Transaction.successful.filter(invoice=self)
-        return self.total() - total_amount(invoice_transactions)
+        return total_amount(invoice_charges) - total_amount(invoice_transactions)
 
     def __str__(self):
         return '#{}'.format(self.id)

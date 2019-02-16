@@ -26,21 +26,27 @@ def pay_with_account_credit_cards(invoice_id) -> Optional[Transaction]:
     with transaction.atomic():
         invoice = Invoice.objects.select_for_update().get(pk=invoice_id)
 
-        # Invoice should be in a state that allows payment
+        #
+        # Precondition: Invoice should be in a state that allows payment
+        #
         if not invoice.in_payable_state:
             raise PreconditionError('Cannot pay invoice with status {}.'.format(invoice.status))
 
-        # The invoice needs a positive total, in a single currency
-        total = invoice.total().monies()
-        if len(total) == 0:
+        #
+        # Precondition: The due amount must be positive, in a single currency
+        #
+        due = invoice.due().monies()
+        if len(due) == 0:
             raise PreconditionError('Cannot pay empty invoice.')
-        if len(total) > 1:
+        if len(due) > 1:
             raise PreconditionError('Cannot pay invoice with more than one currency.')
-        amount = total[0]
+        amount = due[0]
         if amount.amount <= 0:
             raise PreconditionError('Cannot pay invoice with non-positive amount.')
 
-        # Try with valid credit cards. Start with the active ones
+        #
+        # Try valid credit cards until one works. Start with the active ones
+        #
         valid_credit_cards = CreditCard.objects.valid().filter(account=invoice.account).order_by('status')
         if not valid_credit_cards:
             raise PreconditionError('No valid credit card on account.')

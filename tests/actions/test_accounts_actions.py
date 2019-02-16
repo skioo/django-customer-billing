@@ -68,7 +68,7 @@ class AccountActionsTest(TestCase):
         assert signal_handler.call_count == 1
         assert len(invoices) == 1
         invoice = invoices[0]
-        assert invoice.total() == Total(7, 'CHF')
+        assert invoice.due() == Total(7, 'CHF')
         assert invoice.items.count() == 2
 
         # Verify there is nothing left to invoice on this account
@@ -89,13 +89,13 @@ class AccountActionsTest(TestCase):
         items1 = invoice1.items.all()
         assert len(items1) == 1
         assert items1[0].product_code == '10CHF'
-        assert invoice1.total().currencies() == ['CHF']
+        assert invoice1.due().currencies() == ['CHF']
 
         invoice2 = invoices[1]
         items2 = invoice2.items.all()
         assert len(items2) == 1
         assert items2[0].product_code == '30EURO'
-        assert invoice2.total().currencies() == ['EUR']
+        assert invoice2.due().currencies() == ['EUR']
 
         # Verify there is nothing left to invoice on this account
         assert not accounts.create_invoices(account_id=self.account.pk, due_date=date.today())

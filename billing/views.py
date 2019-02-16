@@ -89,8 +89,9 @@ class TransactionSerializer(serializers.ModelSerializer):
 ########################################################################################################
 
 class InvoiceSerializer(serializers.ModelSerializer):
-    total = TotalSerializer(read_only=True)
     due = TotalIncludingZeroSerializer(read_only=True)
+    # We keep the old 'total' field name for API compatiblity.
+    total = TotalSerializer(source='total_charges', read_only=True)
 
     class Meta:
         model = Invoice

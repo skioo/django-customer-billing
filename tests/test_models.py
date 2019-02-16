@@ -68,35 +68,33 @@ class InvoiceTest(TestCase):
             payable_invoices = Invoice.objects.payable(as_of=date.today() + timedelta(days=1))
             assert set(payable_invoices) == {invoice_yesterday, invoice_today, invoice_tomorrow}
 
-    def test_it_should_compute_the_invoice_total(self):
+    def test_it_should_compute_the_invoice_due(self):
         invoice = Invoice.objects.create(account=self.account, due_date=date.today())
         Charge.objects.create(account=self.account, invoice=invoice, amount=Money(10, 'CHF'), product_code='ACHARGE')
         Charge.objects.create(account=self.account, invoice=invoice, amount=Money(-3, 'CHF'), product_code='ACREDIT')
-        with self.assertNumQueries(1):
-            assert invoice.total() == Total(7, 'CHF')
+        with self.assertNumQueries(2):
+            assert invoice.due() == Total(7, 'CHF')
 
-    def test_it_should_compute_the_invoice_total_ignoring_deleted_charges(self):
+    def test_it_should_compute_the_invoice_due_ignoring_deleted_charges(self):
         invoice = Invoice.objects.create(account=self.account, due_date=date.today())
         Charge.objects.create(account=self.account, invoice=invoice, amount=Money(10, 'CHF'), product_code='ACHARGE')
         Charge.objects.create(account=self.account, invoice=invoice, amount=Money(-3, 'CHF'), product_code='ACREDIT')
         Charge.objects.create(account=self.account, invoice=invoice, amount=Money(1000, 'CHF'), product_code='ACHARGE',
                               deleted=True)
-        with self.assertNumQueries(1):
-            assert invoice.total() == Total(7, 'CHF')
+        with self.assertNumQueries(2):
+            assert invoice.due() == Total(7, 'CHF')
 
-    def test_it_should_compute_the_invoice_total_in_multiple_currencies(self):
+    def test_it_should_compute_the_invoice_due_in_multiple_currencies(self):
         invoice = Invoice.objects.create(account=self.account, due_date=date.today())
         Charge.objects.create(account=self.account, invoice=invoice, amount=Money(10, 'CHF'), product_code='ACHARGE')
         Charge.objects.create(account=self.account, invoice=invoice, amount=Money(-3, 'EUR'), product_code='ACREDIT')
-        with self.assertNumQueries(1):
-            assert invoice.total() == Total(10, 'CHF', -3, 'EUR')
+        with self.assertNumQueries(2):
+            assert invoice.due() == Total(10, 'CHF', -3, 'EUR')
 
-    def test_it_should_compute_the_invoice_due(self):
+    def test_it_should_compute_the_invoice_due_when_there_are_transactions(self):
         invoice = Invoice.objects.create(account=self.account, due_date=date.today())
         Charge.objects.create(account=self.account, invoice=invoice, amount=Money(10, 'CHF'), product_code='ACHARGE')
         Transaction.objects.create(account=self.account, invoice=invoice, amount=Money(8, 'CHF'), success=True)
-        with self.assertNumQueries(1):
-            assert invoice.total() == Total(10, 'CHF')
         with self.assertNumQueries(2):
             assert invoice.due() == Total(2, 'CHF')
 
@@ -104,8 +102,6 @@ class InvoiceTest(TestCase):
         invoice = Invoice.objects.create(account=self.account, due_date=date.today())
         Charge.objects.create(account=self.account, invoice=invoice, amount=Money(10, 'CHF'), product_code='ACHARGE')
         Transaction.objects.create(account=self.account, invoice=invoice, amount=Money(15, 'CHF'), success=True)
-        with self.assertNumQueries(1):
-            assert invoice.total() == Total(10, 'CHF')
         with self.assertNumQueries(2):
             assert invoice.due() == Total(-5, 'CHF')
 
