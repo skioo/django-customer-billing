@@ -123,16 +123,17 @@ class Invoice(Model):
 
     def total_charges(self):
         """
-        The sum of all charges (including credits).
-        Should most likely be changed to something more precise.
+        Represents the 'goods' acquired in the invoice.
         """
-        invoice_charges = Charge.objects.filter(invoice=self)
-        return total_amount(invoice_charges)
+        selected_charges = Charge.objects \
+            .filter(invoice=self) \
+            .charges() \
+            .exclude(product_code=CARRIED_FORWARD)
+        return total_amount(selected_charges)
 
     def due(self):
         """
-        The amount due for this invoice.
-        Takes into account all entities in the invoice.
+        The amount due for this invoice. Takes into account all entities in the invoice.
         Can be < 0 if the invoice was overpaid.
         """
         invoice_charges = Charge.objects.filter(invoice=self)
@@ -238,6 +239,10 @@ class ProductProperty(Model):
 
 ########################################################################################################
 # Transactions
+
+CARRIED_FORWARD = 'CARRIED_FORWARD'
+CREDIT_REMAINING = 'CREDIT_REMAINING'
+
 
 class TransactionQuerySet(models.QuerySet):
     def uninvoiced(self, account_id: str) -> QuerySet:

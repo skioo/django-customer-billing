@@ -5,7 +5,7 @@ from django.test import TestCase
 from moneyed import Money
 
 from billing.actions import accounts
-from billing.models import Account, Charge, Transaction, Invoice
+from billing.models import Account, Charge, Transaction, Invoice, CREDIT_REMAINING, CARRIED_FORWARD
 from billing.total import Total
 from ..helper import assert_attrs
 
@@ -119,7 +119,7 @@ class AssignFundsToInvoiceTest(TestCase):
                      {'status': Invoice.PAID,
                       'items': [
                           {'id': charge.id, 'amount': Money(40, 'CHF'), 'product_code': 'ACHARGE'},
-                          {'amount': Money(10, 'CHF'), 'product_code': 'CARRIED_FORWARD'}
+                          {'amount': Money(10, 'CHF'), 'product_code': CARRIED_FORWARD}
                       ],
                       'transactions': [
                           {'id': transaction.id, 'amount': Money(50, 'CHF'), 'success': True}
@@ -128,7 +128,7 @@ class AssignFundsToInvoiceTest(TestCase):
         assert len(uninvoiced_charges) == 1
         uninvoiced_charge = uninvoiced_charges[0]
         assert_attrs(uninvoiced_charge,
-                     {'amount': Money(-10, 'CHF'), 'product_code': 'CREDIT_REMAINING'})
+                     {'amount': Money(-10, 'CHF'), 'product_code': CREDIT_REMAINING})
 
     def test_it_should_pay_invoice_with_already_assigned_payment(self):
         invoice = Invoice.objects.create(account_id=self.account.id, due_date=date.today())
@@ -224,7 +224,7 @@ class AssignFundsToPendingInvoicesTest(TestCase):
                      {'status': Invoice.PAID,
                       'items': [
                           {'amount': Money(40, 'CHF'), 'product_code': 'ACHARGE'},
-                          {'amount': Money(18, 'CHF'), 'product_code': 'CARRIED_FORWARD'},
+                          {'amount': Money(18, 'CHF'), 'product_code': CARRIED_FORWARD},
                       ],
                       'transactions': [
                           {'amount': Money(30, 'CHF')},
@@ -235,7 +235,7 @@ class AssignFundsToPendingInvoicesTest(TestCase):
         assert len(uninvoiced_charges) == 1
         uninvoiced_charge = uninvoiced_charges[0]
         assert_attrs(uninvoiced_charge,
-                     {'amount': Money(-18, 'CHF'), 'product_code': 'CREDIT_REMAINING'})
+                     {'amount': Money(-18, 'CHF'), 'product_code': CREDIT_REMAINING})
 
         # 3- A second charge is added to the account.
         invoice2 = Invoice.objects.create(account_id=self.account.id, due_date=date.today())
@@ -247,12 +247,12 @@ class AssignFundsToPendingInvoicesTest(TestCase):
         assert_attrs(invoice2,
                      {'status': Invoice.PAID,
                       'items': [
-                          {'amount': Money(-18, 'CHF'), 'product_code': 'CREDIT_REMAINING'},
+                          {'amount': Money(-18, 'CHF'), 'product_code': CREDIT_REMAINING},
                           {'amount': Money(12, 'CHF'), 'product_code': 'BCHARGE'},
-                          {'amount': Money(6, 'CHF'), 'product_code': 'CARRIED_FORWARD'},
+                          {'amount': Money(6, 'CHF'), 'product_code': CARRIED_FORWARD},
                       ]})
         assert invoice2.due() == Total(Money(0, 'CHF'))
         uninvoiced_charges = Charge.objects.uninvoiced(account_id=self.account.id)
         assert len(uninvoiced_charges) == 1
         uninvoiced_charge = uninvoiced_charges[0]
-        assert_attrs(uninvoiced_charge, {'amount': Money(-6, 'CHF'), 'product_code': 'CREDIT_REMAINING'})
+        assert_attrs(uninvoiced_charge, {'amount': Money(-6, 'CHF'), 'product_code': CREDIT_REMAINING})

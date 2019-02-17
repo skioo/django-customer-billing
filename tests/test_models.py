@@ -9,7 +9,7 @@ from django.utils.dateparse import parse_datetime
 from moneyed import Money
 from pytest import raises
 
-from billing.models import Account, Charge, CreditCard, Invoice, Transaction, ProductProperty
+from billing.models import Account, Charge, CreditCard, Invoice, Transaction, ProductProperty, CARRIED_FORWARD
 from billing.total import Total
 from .models import MyPSPCreditCard, MyPSPPayment
 
@@ -104,6 +104,19 @@ class InvoiceTest(TestCase):
         Transaction.objects.create(account=self.account, invoice=invoice, amount=Money(15, 'CHF'), success=True)
         with self.assertNumQueries(2):
             assert invoice.due() == Total(-5, 'CHF')
+
+    def test_total_charges_should_select_just_the_right_charges(self):
+        invoice = Invoice.objects.create(account=self.account, due_date=date.today())
+        Charge.objects.create(account=self.account, invoice=invoice, amount=Money(8, 'CHF'), product_code='ACHARGE')
+        Charge.objects.create(account=self.account, invoice=invoice, amount=Money(2, 'CHF'), product_code='BCHARGE')
+        Charge.objects.create(account=self.account, invoice=invoice, amount=Money(-1, 'CHF'), product_code='ACREDIT')
+        Charge.objects.create(account=self.account, invoice=invoice, amount=Money(6, 'CHF'),
+                              product_code=CARRIED_FORWARD)
+        Transaction.objects.create(account=self.account, invoice=invoice, amount=Money(15, 'CHF'), success=True)
+        with self.assertNumQueries(1):
+            assert invoice.total_charges() == Total(10, 'CHF')
+        # Just to demonstrate that the due amount is completely different:
+        assert invoice.due() == Total(0, 'CHF')
 
 
 class CreditCardTest(TestCase):

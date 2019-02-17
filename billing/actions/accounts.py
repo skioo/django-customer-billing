@@ -13,7 +13,7 @@ from moneyed import Money
 from structlog import get_logger
 
 from billing.signals import invoice_ready
-from ..models import Account, Charge, Invoice, ProductProperty, Transaction
+from ..models import Account, Charge, Invoice, ProductProperty, Transaction, CARRIED_FORWARD, CREDIT_REMAINING
 
 logger = get_logger()
 
@@ -211,8 +211,8 @@ def assign_funds_to_invoice(invoice_id: str) -> bool:
                     invoice_id=invoice_id,
                     overpayment=overpayment)
         with transaction.atomic():
-            Charge.objects.create(account_id=account_id, amount=overpayment, product_code='CARRIED_FORWARD',
+            Charge.objects.create(account_id=account_id, amount=overpayment, product_code=CARRIED_FORWARD,
                                   invoice_id=invoice_id)
-            Charge.objects.create(account_id=account_id, amount=-overpayment, product_code='CREDIT_REMAINING')
+            Charge.objects.create(account_id=account_id, amount=-overpayment, product_code=CREDIT_REMAINING)
 
     return invoice.status == Invoice.PAID
