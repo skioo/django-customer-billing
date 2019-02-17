@@ -9,7 +9,8 @@ from django.utils.dateparse import parse_datetime
 from moneyed import Money
 from pytest import raises
 
-from billing.models import Account, Charge, CreditCard, Invoice, Transaction, ProductProperty, CARRIED_FORWARD
+from billing.models import Account, Charge, CreditCard, Invoice, Transaction, ProductProperty, CARRIED_FORWARD, \
+    total_amount
 from billing.total import Total
 from .models import MyPSPCreditCard, MyPSPPayment
 
@@ -302,33 +303,33 @@ class ChargeTest(TestCase):
     def test_uninvoiced_should_ignore_invoiced_charges(self):
         Charge.objects.create(account=self.account, invoice_id=1, amount=Money(10, 'CHF'), product_code='ACHARGE')
         with self.assertNumQueries(2):
-            uc, total = Charge.objects.uninvoiced_with_total(account_id=self.account.pk)
-            assert uc == []
-            assert total == Total()
+            uc = Charge.objects.uninvoiced(account_id=self.account.pk)
+            assert len(uc) == 0
+            assert total_amount(uc) == Total()
 
     def test_uninvoiced_should_consider_credits(self):
         Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
         Charge.objects.create(account=self.account, amount=Money(-30, 'CHF'), product_code='ACREDIT')
         with self.assertNumQueries(2):
-            uc, total = Charge.objects.uninvoiced_with_total(account_id=self.account.pk)
+            uc = Charge.objects.uninvoiced(account_id=self.account.pk)
             assert len(uc) == 2
-            assert total == Total(-20, 'CHF')
+            assert total_amount(uc) == Total(-20, 'CHF')
 
     def test_uninvoiced_can_be_in_multiple_currencies(self):
         Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
         Charge.objects.create(account=self.account, amount=Money(-30, 'EUR'), product_code='ACREDIT')
         with self.assertNumQueries(2):
-            uc, total = Charge.objects.uninvoiced_with_total(account_id=self.account.pk)
+            uc = Charge.objects.uninvoiced(account_id=self.account.pk)
             assert len(uc) == 2
-            assert total == Total(10, 'CHF', -30, 'EUR')
+            assert total_amount(uc) == Total(10, 'CHF', -30, 'EUR')
 
     def test_uninvoiced_should_ignore_deleted_charges(self):
         Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
         Charge.objects.create(account=self.account, deleted=True, amount=Money(5, 'CHF'), product_code='BCHARGE')
         with self.assertNumQueries(2):
-            uc, total = Charge.objects.uninvoiced_with_total(account_id=self.account.pk)
+            uc = Charge.objects.uninvoiced(account_id=self.account.pk)
             assert len(uc) == 1
-            assert total == Total(10, 'CHF')
+            assert total_amount(uc) == Total(10, 'CHF')
 
     def test_it_can_create_charge_with_both_ad_hoc_label_and_product_code(self):
         charge = Charge.objects.create(account=self.account, amount=Money(10, 'CHF'),

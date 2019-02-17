@@ -2,7 +2,6 @@ import calendar
 import re
 import uuid
 from datetime import date, datetime
-from typing import List, Tuple
 
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -181,10 +180,6 @@ class ChargeManager(models.Manager):
 
     def in_currency(self, currency: str) -> QuerySet:
         return self.get_queryset().in_currency(currency)
-
-    def uninvoiced_with_total(self, account_id: str) -> Tuple[List, Total]:
-        uc = self.get_queryset().uninvoiced(account_id)
-        return list(uc), total_amount(uc)
 
 
 class Charge(Model):
