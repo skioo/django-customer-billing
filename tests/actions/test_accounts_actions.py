@@ -47,40 +47,40 @@ class AccountActionsTest(TestCase):
                 product_code='PRODUCTA',
                 product_properties={'123': 'blue'})
 
-    def test_it_should_not_create_invoice_when_money_is_owed_to_the_user(self):
-        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
-        Charge.objects.create(account=self.account, amount=Money(-30, 'CHF'), product_code='ACREDIT')
+    def test_it_should_not_create_invoice_no_charges_are_due(self):
+        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='DELETED', deleted=True)
+        Charge.objects.create(account=self.account, amount=Money(30, 'CHF'), product_code='INVOICED', invoice_id=999)
         assert not accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
-
-    def test_it_should_not_create_an_invoice_when_no_money_is_due(self):
-        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
-        Charge.objects.create(account=self.account, amount=Money(-10, 'CHF'), product_code='ACREDIT')
-        with catch_signal(invoice_ready) as signal_handler:
-            assert not accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
-        assert signal_handler.call_count == 0
 
     def test_it_should_create_an_invoice_when_money_is_due(self):
         Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
         Charge.objects.create(account=self.account, amount=Money(-3, 'CHF'), product_code='ACREDIT')
 
-        with catch_signal(invoice_ready) as signal_handler:
-            invoices = accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
-        assert signal_handler.call_count == 1
+        invoices = accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
         assert len(invoices) == 1
         invoice = invoices[0]
-        assert invoice.due() == Total(7, 'CHF')
-        assert invoice.items.count() == 2
+        assert invoice.total_charges() == Total(10, 'CHF')
+        assert invoice.due() == Total(10, 'CHF')
+        assert invoice.items.count() == 1
 
         # Verify there is nothing left to invoice on this account
         assert not accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
+
+    def test_it_should_create_an_invoice_even_when_enough_credit(self):
+        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
+        Charge.objects.create(account=self.account, amount=Money(-30, 'CHF'), product_code='ACREDIT')
+        invoices = accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
+        assert len(invoices) == 1
+        invoice = invoices[0]
+        assert invoice.total_charges() == Total(10, 'CHF')
+        assert invoice.due() == Total(10, 'CHF')
+        assert invoice.items.count() == 1
 
     def test_it_should_handle_multicurrency_univoiced_charges(self):
         Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='10CHF')
         Charge.objects.create(account=self.account, amount=Money(30, 'EUR'), product_code='30EURO')
 
-        with catch_signal(invoice_ready) as signal_handler:
-            invoices = accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
-        assert signal_handler.call_count == 2
+        invoices = accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
 
         assert len(invoices) == 2
 
@@ -99,3 +99,11 @@ class AccountActionsTest(TestCase):
 
         # Verify there is nothing left to invoice on this account
         assert not accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
+
+    def test_it_should_send_a_signal_when_an_invoice_was_created(self):
+        Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='ACHARGE')
+
+        with catch_signal(invoice_ready) as signal_handler:
+            accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
+
+        assert signal_handler.call_count == 1

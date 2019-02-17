@@ -13,7 +13,8 @@ from moneyed import Money
 from structlog import get_logger
 
 from billing.signals import invoice_ready
-from ..models import Account, Charge, Invoice, ProductProperty, Transaction, CARRIED_FORWARD, CREDIT_REMAINING
+from ..models import Account, Charge, Invoice, ProductProperty, Transaction, CARRIED_FORWARD, CREDIT_REMAINING, \
+    total_amount
 
 logger = get_logger()
 
@@ -48,22 +49,25 @@ def reopen(account_id: str) -> None:
 
 def create_invoices(account_id: str, due_date: date) -> Sequence[Invoice]:
     """
-    Creates the invoices for any uninvoiced charges in the account.
-    Creates one invoice per currency (only when the total in that currency is positive).
+    Creates the invoices for any due positive charges in the account.
+    If there are due positive charges in different currencies, one invoice is created for each currency.
 
-    :param due_date: The date when the invoices will be due.
     :param account_id: The account to invoice.
     :param due_date: The due date for any invoice that gets created.
     :return: A possibly-empty list of Invoices.
     """
     invoices = []
     with transaction.atomic():
-        ucs, total = Charge.objects.uninvoiced_with_total(account_id=account_id)
+        due_charges = Charge.objects \
+            .uninvoiced(account_id=account_id) \
+            .charges()
+        total = total_amount(due_charges)
         for amount_due in total.monies():
             if amount_due.amount > 0:
                 invoice = Invoice.objects.create(account_id=account_id, due_date=due_date)
                 Charge.objects \
                     .uninvoiced(account_id=account_id) \
+                    .charges() \
                     .in_currency(currency=amount_due.currency) \
                     .update(invoice=invoice)
                 invoices.append(invoice)
