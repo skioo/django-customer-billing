@@ -184,7 +184,7 @@ def assign_funds_to_invoice(invoice_id: str) -> bool:
             .in_currency(invoice_due_currency) \
             .order_by('created')
 
-        funds = list(payments) + list(credits)
+        funds = list(credits) + list(payments)
         for fund in funds:
             contributed_amount = abs(fund.amount.amount)  # 'abs' because credits have a negative value
             logger.info('assign-funds-to-invoice.assigning-fund',

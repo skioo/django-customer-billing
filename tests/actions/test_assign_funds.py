@@ -120,6 +120,21 @@ class AssignFundsToInvoiceTest(TestCase):
         transaction_3.refresh_from_db()
         assert transaction_3.invoice is None
 
+    def test_it_should_use_credits_before_payments(self):
+        invoice = Invoice.objects.create(account_id=self.account.id, due_date=date.today())
+        Charge.objects.create(account=self.account, invoice=invoice, amount=Money(10, 'CHF'), product_code='ACHARGE')
+        transaction = Transaction.objects.create(account=self.account, amount=Money(10, 'CHF'), success=True)
+        credit = Charge.objects.create(account=self.account, amount=Money(-10, 'CHF'), product_code='ACREDIT')
+
+        with self.assertNumQueries(7):
+            paid = accounts.assign_funds_to_invoice(invoice_id=invoice.pk)
+        assert paid
+        # Verify that the credit was used (even though the transaction was older)
+        transaction.refresh_from_db()
+        assert transaction.invoice is None
+        credit.refresh_from_db()
+        assert credit.invoice == invoice
+
     def test_it_shoud_generate_credit_remaining_when_payment_is_larger_than_invoice(self):
         invoice = Invoice.objects.create(account_id=self.account.id, due_date=date.today())
         charge = Charge.objects.create(account=self.account, invoice=invoice,
