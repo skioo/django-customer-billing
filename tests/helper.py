@@ -33,7 +33,9 @@ def assert_attrs(entity, expected_attrs):
         attr = getattr(entity, k)
         if callable(getattr(attr, 'all', None)):
             # It's a to-many relation we can folow
-            related_entities = attr.all()
+            related_entities = list(attr.all())
+            assert len(expected) == len(related_entities), \
+                '{} has {} elements, expected {}.'.format(k, len(related_entities), len(expected))
             for i, related_expected_attrs in enumerate(expected):
                 assert_attrs(related_entities[i], related_expected_attrs)
         elif isinstance(attr, Model):
