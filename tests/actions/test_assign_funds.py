@@ -103,6 +103,23 @@ class AssignFundsToInvoiceTest(TestCase):
         assert invoice.status == Invoice.PAID
         assert invoice.due() == Total([Money(0, 'CHF')])
 
+    def test_it_should_use_oldest_payments_first(self):
+        invoice = Invoice.objects.create(account_id=self.account.id, due_date=date.today())
+        Charge.objects.create(account=self.account, invoice=invoice, amount=Money(11, 'CHF'), product_code='ACHARGE')
+        transaction_1 = Transaction.objects.create(account=self.account, amount=Money(5, 'CHF'), success=True)
+        transaction_2 = Transaction.objects.create(account=self.account, amount=Money(6, 'CHF'), success=True)
+        transaction_3 = Transaction.objects.create(account=self.account, amount=Money(7, 'CHF'), success=True)
+
+        with self.assertNumQueries(8):
+            paid = accounts.assign_funds_to_invoice(invoice_id=invoice.pk)
+        assert paid
+        transaction_1.refresh_from_db()
+        assert transaction_1.invoice == invoice
+        transaction_2.refresh_from_db()
+        assert transaction_2.invoice == invoice
+        transaction_3.refresh_from_db()
+        assert transaction_3.invoice is None
+
     def test_it_shoud_generate_credit_remaining_when_payment_is_larger_than_invoice(self):
         invoice = Invoice.objects.create(account_id=self.account.id, due_date=date.today())
         charge = Charge.objects.create(account=self.account, invoice=invoice,
