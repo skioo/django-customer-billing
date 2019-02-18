@@ -114,7 +114,7 @@ def add_charge(account_id: str,
     return charge
 
 
-def assign_funds_to_pending_invoices(account_id: str) -> Sequence[str]:
+def assign_funds_to_account_pending_invoices(account_id: str) -> Sequence[str]:
     """
     Tries to pay pending account invoices (starting from the oldest) with available funds.
     :param account_id: the account on which to perform the operation

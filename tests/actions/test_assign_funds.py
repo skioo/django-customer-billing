@@ -151,7 +151,7 @@ class AssignFundsToInvoiceTest(TestCase):
         assert not paid
 
 
-class AssignFundsToPendingInvoicesTest(TestCase):
+class AssignFundsToAccountPendingInvoicesTest(TestCase):
     """ Test the chaining of assigning funds to multiple invoices in an account.
     """
 
@@ -164,7 +164,7 @@ class AssignFundsToPendingInvoicesTest(TestCase):
                               product_code='ACHARGE')
 
     def test_it_does_nothing_when_no_funds(self):
-        paid_invoice_ids = accounts.assign_funds_to_pending_invoices(account_id=self.account.id)
+        paid_invoice_ids = accounts.assign_funds_to_account_pending_invoices(account_id=self.account.id)
         assert paid_invoice_ids == []
 
     def test_it_pays_invoices_in_different_currencies(self):
@@ -173,7 +173,7 @@ class AssignFundsToPendingInvoicesTest(TestCase):
                               product_code='BCHARGE')
         Transaction.objects.create(account=self.account, amount=Money(5, 'EUR'), success=True)
         Transaction.objects.create(account=self.account, amount=Money(10, 'CHF'), success=True)
-        paid_invoice_ids = accounts.assign_funds_to_pending_invoices(account_id=self.account.id)
+        paid_invoice_ids = accounts.assign_funds_to_account_pending_invoices(account_id=self.account.id)
         assert paid_invoice_ids == [self.invoice1.pk, invoice2.pk]
 
         self.invoice1.refresh_from_db()
@@ -201,7 +201,7 @@ class AssignFundsToPendingInvoicesTest(TestCase):
 
     def test_full_scenario(self):
         # 1- At first the invoice is partially paid.
-        paid_invoice_ids = accounts.assign_funds_to_pending_invoices(account_id=self.account.id)
+        paid_invoice_ids = accounts.assign_funds_to_account_pending_invoices(account_id=self.account.id)
         assert paid_invoice_ids == []
         self.invoice1.refresh_from_db()
         assert_attrs(self.invoice1,
@@ -215,7 +215,7 @@ class AssignFundsToPendingInvoicesTest(TestCase):
 
         # 2- A payment is made with more than enough money to pay the invoice.
         transaction2 = Transaction.objects.create(account=self.account, amount=Money(28, 'CHF'), success=True)
-        paid_invoice_ids = accounts.assign_funds_to_pending_invoices(account_id=self.account.id)
+        paid_invoice_ids = accounts.assign_funds_to_account_pending_invoices(account_id=self.account.id)
         assert paid_invoice_ids == [self.invoice1.pk]
         transaction2.refresh_from_db()
         assert transaction2.invoice == self.invoice1
@@ -241,7 +241,7 @@ class AssignFundsToPendingInvoicesTest(TestCase):
         invoice2 = Invoice.objects.create(account_id=self.account.id, due_date=date.today())
         Charge.objects.create(account=self.account, invoice=invoice2, amount=Money(12, 'CHF'),
                               product_code='BCHARGE')
-        paid_invoice_ids = accounts.assign_funds_to_pending_invoices(account_id=self.account.id)
+        paid_invoice_ids = accounts.assign_funds_to_account_pending_invoices(account_id=self.account.id)
         assert paid_invoice_ids == [invoice2.pk]
         invoice2.refresh_from_db()
         assert_attrs(invoice2,

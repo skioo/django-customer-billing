@@ -526,7 +526,7 @@ assign_funds_to_pending_invoices_button.short_description = _('Assign funds')  #
 
 
 def do_assign_funds_to_pending_invoices(request, account_id):
-    accounts.assign_funds_to_pending_invoices(account_id=account_id)
+    accounts.assign_funds_to_account_pending_invoices(account_id=account_id)
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
 

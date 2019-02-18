@@ -5,7 +5,7 @@ import progressbar
 import structlog
 from django.core.management.base import BaseCommand
 
-from ...actions.accounts import assign_funds_to_pending_invoices
+from ...actions.accounts import assign_funds_to_account_pending_invoices
 from ...models import Account
 
 
@@ -49,7 +49,7 @@ class Command(BaseCommand):
             stats = defaultdict(lambda: 0)
             for account in accounts:
                 try:
-                    paid_invoices = assign_funds_to_pending_invoices(account_id=account.id)
+                    paid_invoices = assign_funds_to_account_pending_invoices(account_id=account.id)
                     stats_key = '{}_invoices'.format(len(paid_invoices))
                     stats[stats_key] += 1
                 except Exception as ex:
