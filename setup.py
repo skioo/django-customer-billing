@@ -27,9 +27,10 @@ setup(
         'django-money',
         'django-fsm',
         'djangorestframework',
+        'django-import-export',
         'structlog',
         'typing',
-        'progressbar2'
+        'progressbar2',
     ],
     license=billing.__licence__,
     classifiers=[

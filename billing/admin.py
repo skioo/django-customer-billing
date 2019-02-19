@@ -9,9 +9,12 @@ from django.shortcuts import render
 from django.urls import reverse, NoReverseMatch
 from django.utils.html import format_html, format_html_join
 from django.utils.translation import ugettext_lazy as _
+from import_export.admin import ExportMixin
+from import_export.formats import base_formats
 from moneyed.localization import format_money
 from structlog import get_logger
 
+from .export import InvoiceResource
 from .actions import accounts, invoices
 from .models import Account, Charge, CreditCard, Invoice, Transaction, ProductProperty
 
@@ -394,7 +397,7 @@ invoice_account_has_valid_cc.boolean = True  # type: ignore
 
 
 @admin.register(Invoice)
-class InvoiceAdmin(AppendOnlyModelAdmin):
+class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
     date_hierarchy = 'created'
     list_display = [invoice_number, created_on, modified_on, link_to_account, invoice_account_has_valid_cc,
                     'total_charges', 'due', 'due_date', invoice_last_transaction, 'status']
@@ -406,6 +409,10 @@ class InvoiceAdmin(AppendOnlyModelAdmin):
     readonly_fields = ['created', 'modified', 'total_charges', 'due', assign_funds_to_invoice_button,
                        pay_invoice_with_cc_button]
     inlines = [ChargeInline, TransactionInline]
+
+    # Export
+    resource_class = InvoiceResource
+    formats = (base_formats.CSV, base_formats.XLS, base_formats.JSON)  # Safe and useful formats.
 
     def get_queryset(self, request):
         return super().get_queryset(request) \
