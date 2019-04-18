@@ -1,20 +1,22 @@
 from datetime import datetime, date
+from typing import Dict
 
 from django import forms
 from django.conf.urls import url
 from django.contrib import admin
-from django.db.models import Max, Prefetch
+from django.db.models import Max, Prefetch, Count, Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse, NoReverseMatch
 from django.utils.html import format_html, format_html_join
 from django.utils.translation import ugettext_lazy as _
+from import_export import resources
 from import_export.admin import ExportMixin
+from import_export.fields import Field
 from import_export.formats import base_formats
 from moneyed.localization import format_money
 from structlog import get_logger
 
-from .export import InvoiceResource
 from .actions import accounts, invoices
 from .models import Account, Charge, CreditCard, Invoice, Transaction, ProductProperty
 
@@ -297,6 +299,50 @@ class TransactionInline(admin.TabularInline):
 ##############################################################
 # Invoices
 
+class InvoiceResource(resources.ModelResource):
+    """
+    We separate the due amount into number and currency columns to make processing the exported data easier.
+    Calculating the due amount is costly and we don't want to do it twice so we cache it.
+    """
+    due_amount = Field()
+    due_amount_currency = Field()
+
+    cc = Field()
+
+    due_cache: Dict = {}
+
+    class Meta:
+        model = Invoice
+        fields = ['id', 'account__owner__email', 'created', 'modified', 'due_date', 'status']
+
+    def dehydrate_due_amount(self, invoice):
+        due = self._due(invoice)
+        if due is not None:
+            return due.amount
+
+    def dehydrate_due_amount_currency(self, invoice):
+        due = self._due(invoice)
+        if due is not None:
+            return due.currency.code
+
+    def _due(self, invoice):
+        cached = self.due_cache.get(invoice.id)
+        if cached:
+            return cached
+        due = self.calculate_due(invoice)
+        self.due_cache[invoice.id] = due
+        return due
+
+    def calculate_due(self, invoice):
+        due_total_monies = invoice.due().monies()
+        if len(due_total_monies) == 1:
+            due_total = due_total_monies[0]
+            return due_total
+
+    def dehydrate_cc(self, invoice):
+        return invoice_account_cc(invoice)
+
+
 class InvoiceOverdueFilter(admin.SimpleListFilter):
     title = _('Overdue')
     parameter_name = 'overdue'
@@ -316,23 +362,27 @@ class InvoiceOverdueFilter(admin.SimpleListFilter):
             return queryset.filter(due_date__gte=today)
 
 
-class InvoiceValidCCFilter(admin.SimpleListFilter):
-    title = _('Valid cc')
-    parameter_name = 'valid_cc'
+class InvoiceCCFilter(admin.SimpleListFilter):
+    title = _('cc')
+    parameter_name = 'cc'
 
     def lookups(self, request, model_admin):
         return (
-            ('yes', _('Yes')),
-            ('no', _('No')),
+            ('valid', _('Valid')),
+            ('expired', _('Expired')),
+            ('none', _('None')),
             ('all', _('All')),
         )
 
     def queryset(self, request, queryset):
         d = date.today()
-        if self.value() == 'yes':
+        if self.value() == 'valid':
             return queryset.filter(account__credit_cards__expiry_date__gte=d)
-        if self.value() == 'no':
-            return queryset.exclude(account__credit_cards__expiry_date__gte=d)
+        if self.value() == 'expired':
+            return queryset.exclude(account__credit_cards__expiry_date__gte=d) \
+                .exclude(account__credit_cards=None)
+        if self.value() == 'none':
+            return queryset.filter(account__credit_cards=None)
 
 
 def assign_funds_to_invoice_button(obj):
@@ -387,21 +437,24 @@ def invoice_last_transaction(obj):
 invoice_last_transaction.short_description = 'Last transaction'  # type: ignore
 
 
-def invoice_account_has_valid_cc(obj):
-    return len(obj.account.valid_credit_card_ids) != 0
+def invoice_account_cc(obj):
+    if obj.valid_credit_card_count > 0:
+        return 'Valid'
+    elif obj.credit_card_count > 0:
+        return 'Expired'
+    else:
+        return 'None'
 
 
-invoice_account_has_valid_cc.short_description = 'Valid cc'  # type: ignore
-
-invoice_account_has_valid_cc.boolean = True  # type: ignore
+invoice_account_cc.short_description = 'cc'  # type: ignore
 
 
 @admin.register(Invoice)
 class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
     date_hierarchy = 'created'
-    list_display = [invoice_number, created_on, modified_on, link_to_account, invoice_account_has_valid_cc,
+    list_display = [invoice_number, created_on, modified_on, link_to_account, invoice_account_cc,
                     'total_charges', 'due', 'due_date', invoice_last_transaction, 'status']
-    list_filter = [InvoiceValidCCFilter, InvoiceOverdueFilter, 'status']
+    list_filter = [InvoiceCCFilter, InvoiceOverdueFilter, 'status']
     search_fields = ['id', 'account__owner__email', 'account__owner__first_name', 'account__owner__last_name']
     ordering = ['-created']
 
@@ -418,9 +471,11 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
         return super().get_queryset(request) \
             .select_related('account__owner') \
             .annotate(last_transaction=Max('transactions__created')) \
-            .prefetch_related(Prefetch('account__credit_cards',
-                                       queryset=CreditCard.objects.valid(),
-                                       to_attr='valid_credit_card_ids'))
+            .annotate(
+            credit_card_count=Count('account__credit_cards'),
+            valid_credit_card_count=Count('account__credit_cards',
+                                          filter=Q(account__credit_cards__expiry_date__gte=date.today()))) \
+            .only('id', 'created', 'modified', 'account__owner__email', 'account__owner__id', 'due_date', 'status')
 
     def get_urls(self):
         custom_urls = [
@@ -446,34 +501,40 @@ class InvoiceInline(admin.TabularInline):
 ##############################################################
 # Accounts
 
-class AccountHasValidCCFilter(admin.SimpleListFilter):
-    title = _('Has valid cc')
-    parameter_name = 'Has_valid_cc'
+class AccountCCFilter(admin.SimpleListFilter):
+    title = _('cc')
+    parameter_name = 'cc'
 
     def lookups(self, request, model_admin):
         return (
-            ('yes', _('Yes')),
-            ('no', _('No')),
+            ('valid', _('Valid')),
+            ('expired', _('Expired')),
+            ('none', _('None')),
             ('all', _('All')),
         )
 
     def queryset(self, request, queryset):
         d = date.today()
-        if self.value() == 'yes':
+        if self.value() == 'valid':
             return queryset.filter(credit_cards__expiry_date__gte=d)
-        if self.value() == 'no':
-            return queryset.exclude(credit_cards__expiry_date__gte=d)
+        if self.value() == 'expired':
+            return queryset.exclude(credit_cards__expiry_date__gte=d) \
+                .exclude(credit_cards=None)
+        if self.value() == 'none':
+            return queryset.filter(credit_cards=None)
 
 
 def payable_invoice_count(obj):
     return len(obj.payable_invoice_ids)
 
 
-def has_valid_cc(obj):
-    return len(obj.valid_credit_card_ids) != 0
-
-
-has_valid_cc.boolean = True  # type: ignore
+def account_cc(obj):
+    if obj.valid_credit_card_count > 0:
+        return 'Valid'
+    elif obj.credit_card_count > 0:
+        return 'Expired'
+    else:
+        return 'None'
 
 
 def create_invoices_button(obj):
@@ -540,10 +601,10 @@ def do_assign_funds_to_pending_invoices(request, account_id):
 @admin.register(Account)
 class AccountAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
-    list_display = ['owner', created_on, modified_on, payable_invoice_count, has_valid_cc, 'currency', 'status']
+    list_display = ['owner', created_on, modified_on, payable_invoice_count, account_cc, 'currency', 'status']
     search_fields = ['id', 'owner__email', 'owner__first_name', 'owner__last_name']
     ordering = ['-created']
-    list_filter = [AccountHasValidCCFilter, 'currency', 'status']
+    list_filter = [AccountCCFilter, 'currency', 'status']
     list_select_related = True
 
     raw_id_fields = ['owner']
@@ -572,6 +633,6 @@ class AccountAdmin(AppendOnlyModelAdmin):
             .prefetch_related(Prefetch('invoices',
                                        queryset=Invoice.objects.payable().only('id'),
                                        to_attr='payable_invoice_ids')) \
-            .prefetch_related(Prefetch('credit_cards',
-                                       queryset=CreditCard.objects.valid().only('id'),
-                                       to_attr='valid_credit_card_ids'))
+            .annotate(
+            credit_card_count=Count('credit_cards'),
+            valid_credit_card_count=Count('credit_cards', filter=Q(credit_cards__expiry_date__gte=date.today())))
