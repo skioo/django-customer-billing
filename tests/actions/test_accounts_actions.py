@@ -7,7 +7,7 @@ from moneyed import Money
 from pytest import raises
 
 from billing.actions import accounts
-from billing.models import Account, Charge
+from billing.models import Account, Charge, Invoice
 from billing.signals import invoice_ready
 from billing.total import Total
 from ..helper import catch_signal
@@ -48,8 +48,9 @@ class AccountActionsTest(TestCase):
                 product_properties={'123': 'blue'})
 
     def test_it_should_not_create_invoice_no_charges_are_due(self):
+        invoice = Invoice.objects.create(account=self.account, due_date=date.today())
         Charge.objects.create(account=self.account, amount=Money(10, 'CHF'), product_code='DELETED', deleted=True)
-        Charge.objects.create(account=self.account, amount=Money(30, 'CHF'), product_code='INVOICED', invoice_id=999)
+        Charge.objects.create(account=self.account, amount=Money(30, 'CHF'), product_code='INVOICED', invoice=invoice)
         assert not accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
 
     def test_it_should_create_an_invoice_when_money_is_due(self):

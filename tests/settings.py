@@ -23,11 +23,18 @@ PASSWORD_HASHERS = [
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
+    'django.contrib.messages',
     'django.contrib.contenttypes',
     'django_fsm',
     'djmoney',
     'tests',
     'billing.apps.BillingConfig',
+]
+
+MIDDLEWARE = [
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
 ]
 
 STATIC_URL = '/static/'
@@ -46,6 +53,7 @@ TEMPLATES = [
                 'django.template.context_processors.i18n',
                 'django.template.context_processors.request',
                 'django.template.context_processors.static',
+                'django.contrib.messages.context_processors.messages',
             ],
         },
     },

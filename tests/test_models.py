@@ -41,6 +41,7 @@ class InvoiceTest(TestCase):
             assert qs.exists()
 
     def test_uninvoiced_payments_should_ignore_invoiced_transactions(self):
+        Invoice.objects.create(id=1, account=self.account, due_date=date.today())
         Transaction.objects.create(account=self.account, success=True, invoice_id=1, amount=Money(10, 'CHF'))
         with self.assertNumQueries(1):
             qs = Transaction.successful.uninvoiced(account_id=self.account.pk).payments()
@@ -121,10 +122,14 @@ class InvoiceTest(TestCase):
 
 
 class CreditCardTest(TestCase):
+    def setUp(self):
+        user = User.objects.create_user('a-username')
+        self.account = Account.objects.create(owner=user, currency='CHF')
+
     def test_it_can_filter_valid_credit_cards(self):
         psp_credit_card1 = MyPSPCreditCard.objects.create(token='atoken1')
         CreditCard.objects.create(
-            account_id='11111111-1111-1111-1111-111111111111',
+            account=self.account,
             type='VIS',
             number='1111',
             expiry_month=1,
@@ -133,7 +138,7 @@ class CreditCardTest(TestCase):
 
         psp_credit_card2 = MyPSPCreditCard.objects.create(token='atoken2')
         credit_card2 = CreditCard.objects.create(
-            account_id='22222222-2222-2222-2222-222222222222',
+            account=self.account,
             type='VIS',
             number='2222',
             expiry_month=1,
@@ -148,7 +153,7 @@ class CreditCardTest(TestCase):
     def test_it_can_determine_if_a_credit_card_is_valid(self):
         psp_credit_card = MyPSPCreditCard.objects.create(token='atoken')
         credit_card = CreditCard.objects.create(
-            account_id='11111111-1111-1111-1111-111111111111',
+            account=self.account,
             type='VIS',
             number='1111',
             expiry_month=12,
@@ -301,6 +306,7 @@ class ChargeTest(TestCase):
             assert result[0].amount_currency == 'CHF'
 
     def test_uninvoiced_should_ignore_invoiced_charges(self):
+        Invoice.objects.create(id=1, account=self.account, due_date=date.today())
         Charge.objects.create(account=self.account, invoice_id=1, amount=Money(10, 'CHF'), product_code='ACHARGE')
         with self.assertNumQueries(2):
             uc = Charge.objects.uninvoiced(account_id=self.account.pk)

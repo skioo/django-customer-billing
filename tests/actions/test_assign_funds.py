@@ -26,10 +26,12 @@ class AssignFundsToInvoiceTest(TestCase):
             paid = accounts.assign_funds_to_invoice(invoice_id=invoice.pk)
         assert not paid
 
-    def test_it_should_ignore_funds_that_are_assigned_to_an_invoice(self):
+    def test_it_should_ignore_funds_that_are_assigned_to_an_other_invoice(self):
+        old_invoice = Invoice.objects.create(account_id=self.account.id, due_date=date.today())
+        Transaction.objects.create(account=self.account, amount=Money(100, 'CHF'), invoice=old_invoice, success=True)
+
         invoice = Invoice.objects.create(account_id=self.account.id, due_date=date.today())
         Charge.objects.create(account=self.account, invoice=invoice, amount=Money(40, 'CHF'), product_code='ACHARGE')
-        Transaction.objects.create(account=self.account, amount=Money(100, 'CHF'), invoice_id=999, success=True)
 
         with self.assertNumQueries(5):
             paid = accounts.assign_funds_to_invoice(invoice_id=invoice.pk)
