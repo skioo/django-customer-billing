@@ -23,8 +23,8 @@ setup(
         'templates/admin/billing/*.html',
     ]},
     install_requires=[
-        'Django>=2.0,<2.3',
-        'django-money',
+        'Django>=2.0',
+        'django-money<0.15',    # 0.15 contains imcompatible changes.
         'django-fsm',
         'djangorestframework',
         'django-import-export',

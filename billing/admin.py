@@ -270,8 +270,26 @@ class ChargeInline(admin.TabularInline):
 #############################################################
 # Transactions
 
+class TransactionResource(resources.ModelResource):
+    amount = Field()
+    amount_currency = Field()
+
+    class Meta:
+        model = Transaction
+        fields = ['id', 'created', 'modified', 'success', 'payment_method',
+                  'credit_card_number', 'account__owner__email', 'invoice']
+
+    def dehydrate_amount(self, tx):
+        if tx.amount is not None:
+            return tx.amount.amount
+
+    def dehydrate_amount_currency(self, tx):
+        if tx.amount is not None:
+            return tx.amount.currency.code
+
+
 @admin.register(Transaction)
-class TransactionAdmin(AppendOnlyModelAdmin):
+class TransactionAdmin(ExportMixin, AppendOnlyModelAdmin):
     verbose_name_plural = 'Transactions'
     date_hierarchy = 'created'
     list_display = ['type', created_on, link_to_account, 'payment_method', 'credit_card_number', 'success',
@@ -284,6 +302,10 @@ class TransactionAdmin(AppendOnlyModelAdmin):
 
     raw_id_fields = ['account', 'invoice']
     readonly_fields = ['created', 'modified']
+
+    # Export
+    resource_class = TransactionResource
+    formats = (base_formats.CSV, base_formats.XLS, base_formats.JSON)  # Safe and useful formats.
 
 
 class TransactionInline(admin.TabularInline):
