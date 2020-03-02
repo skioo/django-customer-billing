@@ -365,9 +365,9 @@ class InvoiceResource(resources.ModelResource):
         return invoice_account_cc(invoice)
 
 
-class InvoiceOverdueFilter(admin.SimpleListFilter):
-    title = _('Overdue')
-    parameter_name = 'overdue'
+class InvoiceDueFilter(admin.SimpleListFilter):
+    title = _('Due')
+    parameter_name = 'due'
 
     def lookups(self, request, model_admin):
         return (
@@ -379,9 +379,9 @@ class InvoiceOverdueFilter(admin.SimpleListFilter):
     def queryset(self, request, queryset):
         today = datetime.now().date()
         if self.value() == 'yes':
-            return queryset.filter(due_date__lt=today)
+            return queryset.filter(due_date__lte=today)
         if self.value() == 'no':
-            return queryset.filter(due_date__gte=today)
+            return queryset.filter(due_date__gt=today)
 
 
 class InvoiceCCFilter(admin.SimpleListFilter):
@@ -476,7 +476,7 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
     date_hierarchy = 'created'
     list_display = [invoice_number, created_on, modified_on, link_to_account, invoice_account_cc,
                     'total_charges', 'due', 'due_date', invoice_last_transaction, 'status']
-    list_filter = [InvoiceCCFilter, InvoiceOverdueFilter, 'status']
+    list_filter = [InvoiceCCFilter, InvoiceDueFilter, 'status']
     search_fields = ['id', 'account__owner__email', 'account__owner__first_name', 'account__owner__last_name']
     ordering = ['-created']
 
