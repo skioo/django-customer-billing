@@ -14,6 +14,12 @@ Requirements
 * Python: 3.6 and over
 * Django: 2.0 and over
 
+Installation
+------------
+
+```
+pip install django-customer-billing
+```
 
 Usage
 -----
@@ -22,7 +28,7 @@ Add billing to your `INSTALLED_APPS`:
 
     INSTALLED_APPS = (
         ...
-        'billing.apps.BillingConfig,
+        'billing.apps.BillingConfig',
         ...
     )
 
