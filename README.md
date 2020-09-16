@@ -29,6 +29,7 @@ Add billing to your `INSTALLED_APPS`:
     INSTALLED_APPS = (
         ...
         'billing.apps.BillingConfig',
+        'import_export',
         ...
     )
 
