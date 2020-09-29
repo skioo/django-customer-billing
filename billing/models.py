@@ -48,9 +48,11 @@ class AccountQuerySet(models.QuerySet):
 class Account(Model):
     OPEN = 'OPEN'
     CLOSED = 'CLOSED'
+    DISABLED = 'DISABLED'
     STATUS_CHOICES = (
         (OPEN, _('Open')),
         (CLOSED, _('Closed')),
+        (DISABLED, _('Disabled')),
     )
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created = models.DateTimeField(auto_now_add=True, db_index=True)
@@ -75,6 +77,14 @@ class Account(Model):
 
     @transition(field=status, source=CLOSED, target=OPEN)
     def reopen(self):
+        pass
+
+    @transition(field=status, source=OPEN, target=DISABLED)
+    def disable(self):
+        pass
+
+    @transition(field=status, source=DISABLED, target=OPEN)
+    def enable(self):
         pass
 
     def __str__(self):
