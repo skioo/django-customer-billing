@@ -58,7 +58,7 @@ class Account(Model):
     owner = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='billing_account', on_delete=PROTECT)
     currency = CurrencyField(db_index=True)
     status = FSMField(max_length=20, choices=STATUS_CHOICES, default=OPEN, db_index=True)
-    disabled = models.BooleanField(default=False)
+    delinquent = models.BooleanField(default=False)
 
     objects = AccountQuerySet.as_manager()
 

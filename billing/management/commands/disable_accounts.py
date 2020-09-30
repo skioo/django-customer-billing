@@ -11,29 +11,53 @@ logger.addHandler(logging.StreamHandler())
 
 
 class Command(BaseCommand):
-    help = """This command disables accounts that are detected as delinquent"""
+    help = (
+        'This command mark accounts as delinquent and vice versa when some criterias '
+        'are accomplished'
+    )
 
     def add_arguments(self, parser):
-        parser.add_argument('--just-inspect', action='store_true', default=False,
-                            help='Shows a summary of accounts which will be disabled.')
+        parser.add_argument(
+            '--just-inspect',
+            action='store_true',
+            default=False,
+            help='Shows a summary of accounts which will be marked as delinquent.'
+        )
 
     def handle(self, *args, **options):
-        accounts = self.get_delinquent_accounts()
+        new_delinquent_accounts = self.get_new_delinquent_accounts()
+        new_legal_accounts = self.get_new_legal_accounts()
         if options['just_inspect']:
-            self.show_accounts_summary(accounts)
+            self.show_accounts_summary(
+                'ACCOUNTS TO BE MARKED AS DELINQUENT',
+                new_delinquent_accounts
+            )
+            self.show_accounts_summary(
+                'ACCOUNTS TO BE MARKED AS LEGAL AGAIN',
+                new_delinquent_accounts
+            )
         else:
-            n_disabled_accounts = accounts.update(disabled=True)
-            logger.info(f'Number of disabled accounts: {n_disabled_accounts}')
+            n_delinquent_accounts = new_delinquent_accounts.update(delinquent=True)
+            logger.info(f'Number of new delinquent accounts: {n_delinquent_accounts}')
+            n_legal_accounts = new_legal_accounts.update(delinquent=False)
+            logger.info(f'Number of legalized accounts: {n_legal_accounts}')
 
     @staticmethod
-    def show_accounts_summary(accounts: List[Account]):
-        logger.info('ACCOUNTS TO BE DISABLED')
+    def show_accounts_summary(header: str, accounts: List[Account]):
+        logger.info(header)
         for account in accounts:
             logger.info(f'[{account.id}] {account.owner}')
 
     @staticmethod
-    def get_delinquent_accounts():
+    def get_new_delinquent_accounts():
         """
         TODO: Choose a criteria categorize an account as a delinquent
         """
-        return Account.objects.filter(status=Account.OPEN, disabled=False)
+        return Account.objects.filter(status=Account.OPEN, delinquent=False)
+
+    @staticmethod
+    def get_new_legal_accounts():
+        """
+        TODO: Choose a criteria categorize an account as a delinquent
+        """
+        return Account.objects.filter(status=Account.OPEN, delinquent=True)
