@@ -81,6 +81,16 @@ class Account(Model):
     def __str__(self):
         return str(self.owner)
 
+    def mark_as_delinquent(self):
+        if not self.delinquent:
+            self.delinquent = True
+            self.save()
+
+    def mark_as_legal(self):
+        if self.delinquent:
+            self.delinquent = False
+            self.save()
+
 
 ########################################################################################################
 # Invoices
