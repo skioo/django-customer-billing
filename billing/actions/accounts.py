@@ -5,16 +5,24 @@ Also, the account is the aggregate root for invoices and charges,
 so the creation of those is managed here.
 
 """
-from datetime import date
-from typing import Dict, Optional, Sequence
+from datetime import date, datetime
+from typing import Dict, Optional, Sequence, List
 
 from django.db import transaction
 from moneyed import Money
 from structlog import get_logger
 
 from billing.signals import invoice_ready
-from ..models import Account, Charge, Invoice, ProductProperty, Transaction, CARRIED_FORWARD, CREDIT_REMAINING, \
-    total_amount
+from ..models import (
+    Account,
+    Charge,
+    Invoice,
+    ProductProperty,
+    Transaction,
+    CARRIED_FORWARD,
+    CREDIT_REMAINING,
+    total_amount,
+)
 
 logger = get_logger()
 
@@ -220,3 +228,103 @@ def assign_funds_to_invoice(invoice_id: str) -> bool:
             Charge.objects.create(account_id=account_id, amount=-overpayment, product_code=CREDIT_REMAINING)
 
     return invoice.status == Invoice.PAID
+
+
+def mark_accounts_as_delinquent(
+    account_ids: List[int],
+    unpaid_invoices_threshold: int,
+    days_since_last_unpaid_threshold: int,
+    currency_amount_threshold_map: dict
+) -> List[int]:
+    """
+    Mark accounts as delinquent when some criteria are accomplished
+    :param account_ids: List of account ids to be evaluated
+    :param unpaid_invoices_threshold: Number of unpaid invoices to consider an user as
+                                      a delinquent
+    :param days_since_last_unpaid_threshold: Days to take into account since the last
+                                             unpaid invoice to consider an user as a
+                                             delinquent
+    :param currency_amount_threshold_map: Balance threshold to consider an user as a
+                                          delinquent.
+                                          Ex: {'CHF': 200, 'EUR': 100, 'NOK': 150}
+    :return: New delinquent account ids
+    """
+    legal_accounts = Account.objects.filter(id__in=account_ids, delinquent=False)
+    new_delinquent_accounts_ids = []
+    for account in legal_accounts:
+        if _account_hast_to_be_marked_as_delinquent(
+            account,
+            unpaid_invoices_threshold,
+            days_since_last_unpaid_threshold,
+            currency_amount_threshold_map,
+        ):
+            new_delinquent_accounts_ids.append(account.id)
+
+    Account.objects.filter(id__in=new_delinquent_accounts_ids).update(delinquent=True)
+    return new_delinquent_accounts_ids
+
+
+def mark_accounts_as_legal(
+    account_ids: List[int],
+    unpaid_invoices_threshold: int,
+    days_since_last_unpaid_threshold: int,
+    currency_amount_threshold_map: dict
+) -> List[int]:
+    """
+    Mark accounts as delinquent when some criteria are accomplished
+    :param account_ids: List of account ids to be evaluated
+    :param unpaid_invoices_threshold: Number of unpaid invoices to consider an user as
+                                      a delinquent
+    :param days_since_last_unpaid_threshold: Days to take into account since the last
+                                             unpaid invoice to consider an user as a
+                                             delinquent
+    :param currency_amount_threshold_map: Balance threshold to consider an user as a
+                                          delinquent.
+                                          Ex: {'CHF': 200, 'EUR': 100, 'NOK': 150}
+    :return: Legalized account ids
+    """
+    delinquent_accounts = Account.objects.filter(id__in=account_ids, delinquent=True)
+    legalized_accounts_ids = []
+    for account in delinquent_accounts:
+        if _account_hast_to_be_marked_as_delinquent(
+            account,
+            unpaid_invoices_threshold,
+            days_since_last_unpaid_threshold,
+            currency_amount_threshold_map,
+        ):
+            legalized_accounts_ids.append(account.id)
+
+    Account.objects.filter(id__in=legalized_accounts_ids).update(delinquent=False)
+    return legalized_accounts_ids
+
+
+def _account_hast_to_be_marked_as_delinquent(
+    account: Account,
+    unpaid_invoices_threshold: int,
+    days_since_last_unpaid_threshold: int,
+    currency_amount_threshold_map: dict,
+) -> bool:
+    account_balance = account.balance()
+    if account_balance == 0:
+        return False
+
+    pending_invoices = account.invoices.filter(status=Invoice.PENDING)
+    if pending_invoices.count() > unpaid_invoices_threshold:
+        return True
+
+    if (
+        pending_invoices
+        and (
+            (datetime.now() - pending_invoices.last().created).days
+            > days_since_last_unpaid_threshold
+        )
+    ):
+        return True
+
+    if (
+        account.currency in currency_amount_threshold_map.keys
+        and account_balance > currency_amount_threshold_map[account.currency]
+    ):
+        return True
+
+    return False
