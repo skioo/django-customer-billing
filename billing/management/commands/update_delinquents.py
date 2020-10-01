@@ -55,14 +55,14 @@ class Command(BaseCommand):
         currency_amount_threshold_map = options['amount_thresholds']
 
         account_ids = Account.objects.values_list('id', flat=True)
-        new_delinquent_accounts_ids = mark_accounts_as_delinquent(
+        new_delinquent_accounts_map = mark_accounts_as_delinquent(
             account_ids,
             unpaid_invoices_threshold,
             days_since_last_unpaid_threshold,
             currency_amount_threshold_map,
         )
         account_ids = list(filter(
-            lambda account_id: account_id not in new_delinquent_accounts_ids,
+            lambda account_id: account_id not in new_delinquent_accounts_map.keys(),
             account_ids
         ))
         legalized_accounts_ids = mark_accounts_as_legal(

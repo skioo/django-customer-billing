@@ -235,7 +235,7 @@ def mark_accounts_as_delinquent(
     unpaid_invoices_threshold: int,
     days_since_last_unpaid_threshold: int,
     currency_amount_threshold_map: dict
-) -> List[int]:
+) -> Dict[int, str]:
     """
     Mark accounts as delinquent when some criteria are accomplished
     :param account_ids: List of account ids to be evaluated
@@ -247,22 +247,24 @@ def mark_accounts_as_delinquent(
     :param currency_amount_threshold_map: Balance threshold to consider an user as a
                                           delinquent.
                                           Ex: {'CHF': 200, 'EUR': 100, 'NOK': 150}
-    :return: New delinquent account ids
+    :return: New delinquent accounts and reason Ex: {111: 'Reason why', ...}
     """
     legal_accounts = Account.objects.filter(id__in=account_ids, delinquent=False)
-    new_delinquent_accounts_ids = []
+    new_delinquent_accounts_map = {}
     for account in legal_accounts:
-        is_delinquent, _ = is_a_delinquent_account(
+        is_delinquent, reason = is_a_delinquent_account(
             account,
             unpaid_invoices_threshold,
             days_since_last_unpaid_threshold,
             currency_amount_threshold_map,
         )
         if is_delinquent:
-            new_delinquent_accounts_ids.append(account.id)
+            new_delinquent_accounts_map[account.id] = reason
 
-    Account.objects.filter(id__in=new_delinquent_accounts_ids).update(delinquent=True)
-    return new_delinquent_accounts_ids
+    Account.objects.filter(
+        id__in=new_delinquent_accounts_map.keys()
+    ).update(delinquent=True)
+    return new_delinquent_accounts_map
 
 
 def mark_accounts_as_legal(
