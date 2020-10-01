@@ -252,12 +252,13 @@ def mark_accounts_as_delinquent(
     legal_accounts = Account.objects.filter(id__in=account_ids, delinquent=False)
     new_delinquent_accounts_ids = []
     for account in legal_accounts:
-        if _account_has_to_be_marked_as_delinquent(
+        is_delinquent, _ = account_has_to_be_marked_as_delinquent(
             account,
             unpaid_invoices_threshold,
             days_since_last_unpaid_threshold,
             currency_amount_threshold_map,
-        ):
+        )
+        if is_delinquent:
             new_delinquent_accounts_ids.append(account.id)
 
     Account.objects.filter(id__in=new_delinquent_accounts_ids).update(delinquent=True)
@@ -286,28 +287,34 @@ def mark_accounts_as_legal(
     delinquent_accounts = Account.objects.filter(id__in=account_ids, delinquent=True)
     legalized_accounts_ids = []
     for account in delinquent_accounts:
-        if _account_has_to_be_marked_as_delinquent(
+        is_delinquent, _ = account_has_to_be_marked_as_delinquent(
             account,
             unpaid_invoices_threshold,
             days_since_last_unpaid_threshold,
             currency_amount_threshold_map,
-        ):
+        )
+        if not is_delinquent:
             legalized_accounts_ids.append(account.id)
 
     Account.objects.filter(id__in=legalized_accounts_ids).update(delinquent=False)
     return legalized_accounts_ids
 
 
-def _account_has_to_be_marked_as_delinquent(
+def account_has_to_be_marked_as_delinquent(
     account: Account,
     unpaid_invoices_threshold: int,
     days_since_last_unpaid_threshold: int,
     currency_amount_threshold_map: dict,
-) -> bool:
+) -> (bool, str):
+    """
+    Check if an account has to be marked as delinquent
+    :return: (is_delinquent, reason)
+    """
     account_balance = account.balance()
     pending_invoices = account.invoices.filter(status=Invoice.PENDING)
     if pending_invoices.count() > unpaid_invoices_threshold:
-        return True
+        reason = f'Account has more than {unpaid_invoices_threshold} pending invoices'
+        return True, reason
 
     if pending_invoices:
         last_pending_invoice_date = pending_invoices.last().created
@@ -315,7 +322,11 @@ def _account_has_to_be_marked_as_delinquent(
             (datetime.now() - last_pending_invoice_date.replace(tzinfo=None)).days
         )
         if days_since_last_pending_invoice >= days_since_last_unpaid_threshold:
-            return True
+            reason = (
+                f'Account has a debt since more than '
+                f'{days_since_last_unpaid_threshold} days'
+            )
+            return True, reason
 
     for amount_due in account_balance.monies():
         currency = str(amount_due.currency)
@@ -324,6 +335,9 @@ def _account_has_to_be_marked_as_delinquent(
             and currency in currency_amount_threshold_map
             and abs(amount_due.amount) > currency_amount_threshold_map[currency]
         ):
-            return True
+            reason = (
+                f'Account has a debt of more than {abs(amount_due.amount)} {currency}'
+            )
+            return True, reason
 
-    return False
+    return False, ''
