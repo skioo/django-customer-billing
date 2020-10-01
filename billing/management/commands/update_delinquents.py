@@ -75,3 +75,4 @@ class Command(BaseCommand):
 
         logger.info(f'New delinquent accounts: {len(new_delinquent_accounts_ids)}')
         logger.info(f'Legalized accounts: {len(legalized_accounts_ids)}')
+        return new_delinquent_accounts_map
