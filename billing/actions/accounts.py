@@ -252,7 +252,7 @@ def mark_accounts_as_delinquent(
     legal_accounts = Account.objects.filter(id__in=account_ids, delinquent=False)
     new_delinquent_accounts_ids = []
     for account in legal_accounts:
-        is_delinquent, _ = account_has_to_be_marked_as_delinquent(
+        is_delinquent, _ = is_a_delinquent_account(
             account,
             unpaid_invoices_threshold,
             days_since_last_unpaid_threshold,
@@ -287,7 +287,7 @@ def mark_accounts_as_legal(
     delinquent_accounts = Account.objects.filter(id__in=account_ids, delinquent=True)
     legalized_accounts_ids = []
     for account in delinquent_accounts:
-        is_delinquent, _ = account_has_to_be_marked_as_delinquent(
+        is_delinquent, _ = is_a_delinquent_account(
             account,
             unpaid_invoices_threshold,
             days_since_last_unpaid_threshold,
@@ -300,7 +300,7 @@ def mark_accounts_as_legal(
     return legalized_accounts_ids
 
 
-def account_has_to_be_marked_as_delinquent(
+def is_a_delinquent_account(
     account: Account,
     unpaid_invoices_threshold: int,
     days_since_last_unpaid_threshold: int,
