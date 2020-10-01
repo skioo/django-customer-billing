@@ -61,8 +61,9 @@ class Command(BaseCommand):
             days_since_last_unpaid_threshold,
             currency_amount_threshold_map,
         )
+        new_delinquent_accounts_ids = new_delinquent_accounts_map.keys()
         account_ids = list(filter(
-            lambda account_id: account_id not in new_delinquent_accounts_map.keys(),
+            lambda account_id: account_id not in new_delinquent_accounts_ids,
             account_ids
         ))
         legalized_accounts_ids = mark_accounts_as_legal(
