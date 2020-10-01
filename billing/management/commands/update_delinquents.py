@@ -28,13 +28,13 @@ class Command(BaseCommand):
         parser.add_argument(
             '--unpaid-invoices',
             type=int,
-            default=2,
+            default=None,
             help='Number of unpaid invoices to consider an user as a delinquent'
         )
         parser.add_argument(
             '--days-since-last-unpaid',
             type=int,
-            default=2,
+            default=None,
             help=(
                 'Days to take into account since the last unpaid invoice to consider '
                 'an user as a delinquent'
@@ -43,6 +43,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--amount-thresholds',
             type=json.loads,
+            default=None,
             help=(
                 'Balance threshold to consider an user as a delinquent. '
                 'Ex: \'{"CHF": 200, "EUR": 100, "NOK": 150}\''
