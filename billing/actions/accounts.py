@@ -252,7 +252,7 @@ def mark_accounts_as_delinquent(
     legal_accounts = Account.objects.filter(id__in=account_ids, delinquent=False)
     new_delinquent_accounts_ids = []
     for account in legal_accounts:
-        if _account_hast_to_be_marked_as_delinquent(
+        if _account_has_to_be_marked_as_delinquent(
             account,
             unpaid_invoices_threshold,
             days_since_last_unpaid_threshold,
@@ -286,7 +286,7 @@ def mark_accounts_as_legal(
     delinquent_accounts = Account.objects.filter(id__in=account_ids, delinquent=True)
     legalized_accounts_ids = []
     for account in delinquent_accounts:
-        if _account_hast_to_be_marked_as_delinquent(
+        if _account_has_to_be_marked_as_delinquent(
             account,
             unpaid_invoices_threshold,
             days_since_last_unpaid_threshold,
@@ -298,33 +298,32 @@ def mark_accounts_as_legal(
     return legalized_accounts_ids
 
 
-def _account_hast_to_be_marked_as_delinquent(
+def _account_has_to_be_marked_as_delinquent(
     account: Account,
     unpaid_invoices_threshold: int,
     days_since_last_unpaid_threshold: int,
     currency_amount_threshold_map: dict,
 ) -> bool:
     account_balance = account.balance()
-    if account_balance == 0:
-        return False
-
     pending_invoices = account.invoices.filter(status=Invoice.PENDING)
     if pending_invoices.count() > unpaid_invoices_threshold:
         return True
 
-    if (
-        pending_invoices
-        and (
-            (datetime.now() - pending_invoices.last().created).days
-            > days_since_last_unpaid_threshold
+    if pending_invoices:
+        last_pending_invoice_date = pending_invoices.last().created
+        days_since_last_pending_invoice = (
+            (datetime.now() - last_pending_invoice_date.replace(tzinfo=None)).days
         )
-    ):
-        return True
+        if days_since_last_pending_invoice >= days_since_last_unpaid_threshold:
+            return True
 
-    if (
-        account.currency in currency_amount_threshold_map.keys
-        and account_balance > currency_amount_threshold_map[account.currency]
-    ):
-        return True
+    for amount_due in account_balance.monies():
+        currency = str(amount_due.currency)
+        if (
+            amount_due.amount < 0
+            and currency in currency_amount_threshold_map
+            and abs(amount_due.amount) > currency_amount_threshold_map[currency]
+        ):
+            return True
 
     return False
