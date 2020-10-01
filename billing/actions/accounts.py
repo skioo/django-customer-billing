@@ -6,7 +6,7 @@ so the creation of those is managed here.
 
 """
 from datetime import date, datetime
-from typing import Dict, Optional, Sequence, List
+from typing import Dict, Optional, Sequence, List, Tuple
 
 from django.db import transaction
 from moneyed import Money
@@ -305,7 +305,7 @@ def is_a_delinquent_account(
     unpaid_invoices_threshold: int,
     days_since_last_unpaid_threshold: int,
     currency_amount_threshold_map: dict,
-) -> (bool, str):
+) -> Tuple[bool, str]:
     """
     Check if an account has to be marked as delinquent
     :return: (is_delinquent, reason)
