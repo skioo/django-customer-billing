@@ -73,9 +73,8 @@ class Command(BaseCommand):
             )
         )
 
-        logger.info(f'New delinquent accounts: {new_delinquent_accounts_map}')
-        logger.info(f'Legalized accounts: {compliant_accounts_ids}')
-
+        logger.info(new_delinquent_accounts_map=new_delinquent_accounts_map)
+        logger.info(compliant_accounts_ids=compliant_accounts_ids)
         if dry_run:
             return
 
