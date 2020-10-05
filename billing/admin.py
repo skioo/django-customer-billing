@@ -489,6 +489,13 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
     resource_class = InvoiceResource
     formats = (base_formats.CSV, base_formats.XLS, base_formats.JSON)  # Safe and useful formats.
 
+    def save_model(self, request, obj, form, change):
+        update_fields = []
+        if change:
+            if form.initial['tax_rate'] != form.cleaned_data['tax_rate']:
+                update_fields.append('tax_rate')
+        obj.save(update_fields=update_fields)
+
     def get_queryset(self, request):
         return super().get_queryset(request) \
             .select_related('account__owner') \
@@ -623,7 +630,10 @@ def do_assign_funds_to_pending_invoices(request, account_id):
 @admin.register(Account)
 class AccountAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
-    list_display = ['owner', created_on, modified_on, payable_invoice_count, account_cc, 'currency', 'status']
+    list_display = [
+        'owner', created_on, modified_on, payable_invoice_count, account_cc, 'currency',
+        'status', 'delinquent'
+    ]
     search_fields = ['id', 'owner__email', 'owner__first_name', 'owner__last_name']
     ordering = ['-created']
     list_filter = [AccountCCFilter, 'currency', 'status']
