@@ -489,14 +489,6 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
     resource_class = InvoiceResource
     formats = (base_formats.CSV, base_formats.XLS, base_formats.JSON)  # Safe and useful formats.
 
-    def save_model(self, request, obj, form, change):
-        update_fields = []
-        for key, value in form.cleaned_data.items():
-            # True if something changed in model
-            if value != form.initial[key]:
-                update_fields.append(key)
-        obj.save(update_fields=update_fields)
-
     def get_queryset(self, request):
         return super().get_queryset(request) \
             .select_related('account__owner') \
@@ -645,6 +637,14 @@ class AccountAdmin(AppendOnlyModelAdmin):
                        assign_funds_to_pending_invoices_button]
 
     inlines = [CreditCardInline, ChargeInline, InvoiceInline, TransactionInline]
+
+    def save_model(self, request, obj, form, change):
+        update_fields = []
+        for key, value in form.cleaned_data.items():
+            # True if something changed in model
+            if value != form.initial[key]:
+                update_fields.append(key)
+        obj.save(update_fields=update_fields)
 
     def get_urls(self):
         urls = super().get_urls()
