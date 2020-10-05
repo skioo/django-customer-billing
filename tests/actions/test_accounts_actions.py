@@ -145,7 +145,7 @@ class AccountActionsTest(TestCase):
             account_id=self.account.pk,
             due_date=date.today()
         )[0]
-        invoice.created = invoice.created - timedelta(days=7)
+        invoice.due_date = invoice.created - timedelta(days=7)
         invoice.save()
         accounts.mark_accounts_as_delinquent(
             [self.account.id],

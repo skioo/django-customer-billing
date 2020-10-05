@@ -5,7 +5,7 @@ Also, the account is the aggregate root for invoices and charges,
 so the creation of those is managed here.
 
 """
-from datetime import date, datetime
+from datetime import date
 from typing import Dict, Optional, Sequence, List, Tuple
 
 from django.db import transaction
@@ -252,7 +252,7 @@ def mark_accounts_as_delinquent(
     legal_accounts = Account.objects.filter(id__in=account_ids, delinquent=False)
     new_delinquent_accounts_map = {}
     for account in legal_accounts:
-        is_delinquent, reason = is_a_delinquent_account(
+        is_delinquent, reason = is_account_delinquent(
             account,
             unpaid_invoices_threshold,
             days_since_last_unpaid_threshold,
@@ -289,7 +289,7 @@ def mark_accounts_as_legal(
     delinquent_accounts = Account.objects.filter(id__in=account_ids, delinquent=True)
     legalized_accounts_ids = []
     for account in delinquent_accounts:
-        is_delinquent, _ = is_a_delinquent_account(
+        is_delinquent, _ = is_account_delinquent(
             account,
             unpaid_invoices_threshold,
             days_since_last_unpaid_threshold,
@@ -302,7 +302,7 @@ def mark_accounts_as_legal(
     return legalized_accounts_ids
 
 
-def is_a_delinquent_account(
+def is_account_delinquent(
     account: Account,
     unpaid_invoices_threshold: Optional[int],
     days_since_last_unpaid_threshold: Optional[int],
@@ -312,19 +312,17 @@ def is_a_delinquent_account(
     Check if an account has to be marked as delinquent
     :return: (is_delinquent, reason)
     """
-    account_balance = account.balance()
     pending_invoices = account.invoices.filter(status=Invoice.PENDING)
     if (
         unpaid_invoices_threshold is not None
         and pending_invoices.count() > unpaid_invoices_threshold
     ):
-        reason = f'Account has more than {unpaid_invoices_threshold} pending invoices'
-        return True, reason
+        return True, f'Account has more than {unpaid_invoices_threshold} pending invoices'
 
     if days_since_last_unpaid_threshold is not None and pending_invoices:
-        last_pending_invoice_date = pending_invoices.last().created
+        last_pending_invoice = pending_invoices.last()
         days_since_last_pending_invoice = (
-            (datetime.now() - last_pending_invoice_date.replace(tzinfo=None)).days
+            (date.today() - last_pending_invoice.due_date).days
         )
         if days_since_last_pending_invoice >= days_since_last_unpaid_threshold:
             reason = (
@@ -334,6 +332,7 @@ def is_a_delinquent_account(
             return True, reason
 
     if currency_amount_threshold_map:
+        account_balance = account.balance()
         for amount_due in account_balance.monies():
             currency = str(amount_due.currency)
             if (

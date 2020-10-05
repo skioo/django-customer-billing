@@ -17,7 +17,7 @@ class Command(BaseCommand):
         > python manage.py update_delinquents
                            --unpaid-invoices 2
                            --days-since-last-unpaid 30
-                           --amount-thresholds '{"CHF": 200, "EUR": 100, "NOK": 150}'
+                           --amount-thresholds '{"CHF": 200, "EUR": 100, "NOK": 1000}'
     """
     help = (
         'This command mark accounts as delinquent and vice versa when some criteria '
@@ -63,10 +63,10 @@ class Command(BaseCommand):
             currency_amount_threshold_map,
         )
         new_delinquent_accounts_ids = new_delinquent_accounts_map.keys()
-        account_ids = list(filter(
-            lambda account_id: account_id not in new_delinquent_accounts_ids,
-            account_ids
-        ))
+        account_ids = [
+            account_id for account_id in account_ids
+            if account_id not in new_delinquent_accounts_ids
+        ]
         legalized_accounts_ids = mark_accounts_as_legal(
             account_ids,
             unpaid_invoices_threshold,
