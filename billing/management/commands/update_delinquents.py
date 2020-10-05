@@ -1,9 +1,10 @@
 import json
 import logging
+from typing import List, Tuple, Dict
 
 from django.core.management.base import BaseCommand
 
-from ...actions.accounts import mark_accounts_as_legal, mark_accounts_as_delinquent
+from ...actions.accounts import update_accounts_delinquent_status
 from ...models import Account
 
 logger = logging.getLogger('django.db.backends')
@@ -50,30 +51,24 @@ class Command(BaseCommand):
             )
         )
 
-    def handle(self, *args, **options):
+    def handle(self, *args, **options) -> Tuple[Dict[int, List[str]], List[int]]:
         unpaid_invoices_threshold = options['unpaid_invoices']
         days_since_last_unpaid_threshold = options['days_since_last_unpaid']
         currency_amount_threshold_map = options['amount_thresholds']
 
         account_ids = Account.objects.values_list('id', flat=True)
-        new_delinquent_accounts_map = mark_accounts_as_delinquent(
-            account_ids,
-            unpaid_invoices_threshold,
-            days_since_last_unpaid_threshold,
-            currency_amount_threshold_map,
-        )
-        new_delinquent_accounts_ids = new_delinquent_accounts_map.keys()
-        account_ids = [
-            account_id for account_id in account_ids
-            if account_id not in new_delinquent_accounts_ids
-        ]
-        legalized_accounts_ids = mark_accounts_as_legal(
-            account_ids,
-            unpaid_invoices_threshold,
-            days_since_last_unpaid_threshold,
-            currency_amount_threshold_map,
+        new_delinquent_accounts_map, complaint_accounts_ids = (
+            update_accounts_delinquent_status(
+                account_ids,
+                unpaid_invoices_threshold,
+                days_since_last_unpaid_threshold,
+                currency_amount_threshold_map,
+            )
         )
 
-        logger.info(f'New delinquent accounts: {len(new_delinquent_accounts_ids)}')
-        logger.info(f'Legalized accounts: {len(legalized_accounts_ids)}')
-        return new_delinquent_accounts_map
+        logger.info(
+            f'New delinquent accounts: {len(new_delinquent_accounts_map.keys())}'
+        )
+        logger.info(f'Legalized accounts: {len(complaint_accounts_ids)}')
+
+        return new_delinquent_accounts_map, complaint_accounts_ids

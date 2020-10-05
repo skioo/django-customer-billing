@@ -110,7 +110,7 @@ class AccountActionsTest(TestCase):
         assert signal_handler.call_count == 1
 
     def test_dont_mark_account_as_delinquent_when_account_balance_is_0(self):
-        accounts.mark_accounts_as_delinquent(
+        accounts.update_accounts_delinquent_status(
             [self.account.id],
             unpaid_invoices_threshold=99,
             days_since_last_unpaid_threshold=99,
@@ -126,7 +126,7 @@ class AccountActionsTest(TestCase):
             product_code='10CHF'
         )
         accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
-        accounts.mark_accounts_as_delinquent(
+        accounts.update_accounts_delinquent_status(
             [self.account.id],
             unpaid_invoices_threshold=0,
             days_since_last_unpaid_threshold=99,
@@ -147,7 +147,7 @@ class AccountActionsTest(TestCase):
         )[0]
         invoice.due_date = invoice.created - timedelta(days=7)
         invoice.save()
-        accounts.mark_accounts_as_delinquent(
+        accounts.update_accounts_delinquent_status(
             [self.account.id],
             unpaid_invoices_threshold=1,
             days_since_last_unpaid_threshold=6,
@@ -163,7 +163,7 @@ class AccountActionsTest(TestCase):
             product_code='10CHF'
         )
         accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
-        accounts.mark_accounts_as_delinquent(
+        accounts.update_accounts_delinquent_status(
             [self.account.id],
             unpaid_invoices_threshold=1,
             days_since_last_unpaid_threshold=6,
@@ -184,7 +184,7 @@ class AccountActionsTest(TestCase):
         )[0]
         invoice.status = Invoice.PAID
         invoice.save()
-        accounts.mark_accounts_as_delinquent(
+        accounts.update_accounts_delinquent_status(
             [self.account.id],
             unpaid_invoices_threshold=1,
             days_since_last_unpaid_threshold=6,
