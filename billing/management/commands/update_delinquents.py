@@ -1,10 +1,13 @@
 import json
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional
 
 import structlog
 from django.core.management.base import BaseCommand
 
-from ...actions.accounts import update_accounts_delinquent_status
+from ...actions.accounts import (
+    get_accounts_which_delinquent_status_has_to_change,
+    swap_delinquent_status,
+)
 from ...models import Account
 
 logger = structlog.get_logger()
@@ -48,15 +51,25 @@ class Command(BaseCommand):
                 'Ex: \'{"CHF": 200, "EUR": 100, "NOK": 150}\''
             )
         )
+        parser.add_argument(
+            '--dry-run',
+            action='store_true',
+            help='Shows accounts which delinquent status is going to change'
+        )
 
-    def handle(self, *args, **options) -> Tuple[Dict[int, List[str]], List[int]]:
+    def handle(
+        self,
+        *args,
+        **options
+    ) -> Optional[Tuple[Dict[int, List[str]], List[int]]]:
         unpaid_invoices_threshold = options['unpaid_invoices']
         days_since_last_unpaid_threshold = options['days_since_last_unpaid']
         currency_amount_threshold_map = options['amount_thresholds']
+        dry_run = options['dry_run']
 
         account_ids = Account.objects.values_list('id', flat=True)
         new_delinquent_accounts_map, compliant_accounts_ids = (
-            update_accounts_delinquent_status(
+            get_accounts_which_delinquent_status_has_to_change(
                 account_ids,
                 unpaid_invoices_threshold,
                 days_since_last_unpaid_threshold,
@@ -64,9 +77,14 @@ class Command(BaseCommand):
             )
         )
 
-        logger.info(
-            f'New delinquent accounts: {len(new_delinquent_accounts_map.keys())}'
+        logger.info(f'New delinquent accounts: {new_delinquent_accounts_map}')
+        logger.info(f'Legalized accounts: {compliant_accounts_ids}')
+
+        if dry_run:
+            return
+
+        swap_delinquent_status(
+            list(new_delinquent_accounts_map.keys()) + compliant_accounts_ids
         )
-        logger.info(f'Legalized accounts: {len(compliant_accounts_ids)}')
 
         return new_delinquent_accounts_map, compliant_accounts_ids

@@ -9,6 +9,7 @@ from datetime import date
 from typing import Dict, Optional, Sequence, List, Tuple
 
 from django.db import transaction
+from django.db.models import Case, Value, When
 from moneyed import Money
 from structlog import get_logger
 
@@ -230,14 +231,14 @@ def assign_funds_to_invoice(invoice_id: str) -> bool:
     return invoice.status == Invoice.PAID
 
 
-def update_accounts_delinquent_status(
-    account_ids: List[int],
-    unpaid_invoices_threshold: Optional[int],
-    days_since_last_unpaid_threshold: Optional[int],
-    currency_amount_threshold_map: Optional[dict],
+def get_accounts_which_delinquent_status_has_to_change(
+        account_ids: List[int],
+        unpaid_invoices_threshold: Optional[int],
+        days_since_last_unpaid_threshold: Optional[int],
+        currency_amount_threshold_map: Optional[dict],
 ) -> Tuple[Dict[int, List[str]], List[int]]:
     """
-    Mark accounts as delinquent or vice versa when some criteria are accomplished
+    Gets a summary of accounts which delinquent status have to be updated
     :param account_ids: List of account ids to be evaluated
     :param unpaid_invoices_threshold: Number of unpaid invoices to consider an user as
                                       a delinquent
@@ -268,11 +269,6 @@ def update_accounts_delinquent_status(
 
         elif account.delinquent and not reasons:
             compliant_accounts_ids.append(account.id)
-
-    Account.objects.filter(
-        id__in=new_delinquent_accounts_map.keys()
-    ).update(delinquent=True)
-    Account.objects.filter(id__in=compliant_accounts_ids).update(delinquent=False)
 
     return new_delinquent_accounts_map, compliant_accounts_ids
 
@@ -323,3 +319,13 @@ def compute_account_violations(
                 )
 
     return reasons
+
+
+def swap_delinquent_status(account_ids: List[int]):
+    """
+    Swap delinquent status of each account
+    """
+    Account.objects.filter(id__in=account_ids).update(delinquent=Case(
+        When(delinquent=True, then=Value(False)),
+        default=Value(True)
+    ))
