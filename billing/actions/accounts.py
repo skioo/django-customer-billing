@@ -249,56 +249,43 @@ def update_accounts_delinquent_status(
                                           Ex: {'CHF': 200, 'EUR': 100, 'NOK': 150}
     :return: (
         New delinquent accounts and reason map. Ex: {111: ['Reason why', ...], ...},
-        New complaint accounts ids list
+        New compliant accounts ids list
     )
     """
-    compliant_accounts = Account.objects.filter(id__in=account_ids, delinquent=False)
+    compliant_accounts = Account.objects.filter(id__in=account_ids)
     new_delinquent_accounts_map = {}
+    compliant_accounts_ids = []
     for account in compliant_accounts:
-        is_delinquent, reason = is_account_delinquent(
+        reasons = compute_account_violations(
             account,
             unpaid_invoices_threshold,
             days_since_last_unpaid_threshold,
             currency_amount_threshold_map,
         )
-        if is_delinquent:
-            new_delinquent_accounts_map[account.id] = reason
 
-    new_delinquent_accounts_ids = new_delinquent_accounts_map.keys()
-    account_ids = [
-        account_id for account_id in account_ids
-        if account_id not in new_delinquent_accounts_ids
-    ]
+        if not account.delinquent and reasons:
+            new_delinquent_accounts_map[account.id] = reasons
 
-    delinquent_accounts = Account.objects.filter(id__in=account_ids, delinquent=True)
-    complaint_accounts_ids = []
-    for account in delinquent_accounts:
-        is_delinquent, _ = is_account_delinquent(
-            account,
-            unpaid_invoices_threshold,
-            days_since_last_unpaid_threshold,
-            currency_amount_threshold_map,
-        )
-        if not is_delinquent:
-            complaint_accounts_ids.append(account.id)
+        elif account.delinquent and not reasons:
+            compliant_accounts_ids.append(account.id)
 
     Account.objects.filter(
         id__in=new_delinquent_accounts_map.keys()
     ).update(delinquent=True)
-    Account.objects.filter(id__in=complaint_accounts_ids).update(delinquent=False)
+    Account.objects.filter(id__in=compliant_accounts_ids).update(delinquent=False)
 
-    return new_delinquent_accounts_map, complaint_accounts_ids
+    return new_delinquent_accounts_map, compliant_accounts_ids
 
 
-def is_account_delinquent(
+def compute_account_violations(
     account: Account,
     unpaid_invoices_threshold: Optional[int],
     days_since_last_unpaid_threshold: Optional[int],
     currency_amount_threshold_map: Optional[dict],
-) -> Tuple[bool, List[str]]:
+) -> List[str]:
     """
     Check if an account has to be marked as delinquent
-    :return: (is_delinquent, reason)
+    :return: Reasons why account has to be marked as delinquent
     """
     reasons = []
     pending_invoices = account.invoices.filter(status=Invoice.PENDING)
@@ -335,4 +322,4 @@ def is_account_delinquent(
                     f'{currency}'
                 )
 
-    return bool(len(reasons)), reasons
+    return reasons

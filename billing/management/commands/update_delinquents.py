@@ -1,15 +1,13 @@
 import json
-import logging
 from typing import List, Tuple, Dict
 
+import structlog
 from django.core.management.base import BaseCommand
 
 from ...actions.accounts import update_accounts_delinquent_status
 from ...models import Account
 
-logger = logging.getLogger('django.db.backends')
-logger.setLevel(logging.DEBUG)
-logger.addHandler(logging.StreamHandler())
+logger = structlog.get_logger()
 
 
 class Command(BaseCommand):
@@ -57,7 +55,7 @@ class Command(BaseCommand):
         currency_amount_threshold_map = options['amount_thresholds']
 
         account_ids = Account.objects.values_list('id', flat=True)
-        new_delinquent_accounts_map, complaint_accounts_ids = (
+        new_delinquent_accounts_map, compliant_accounts_ids = (
             update_accounts_delinquent_status(
                 account_ids,
                 unpaid_invoices_threshold,
@@ -69,6 +67,6 @@ class Command(BaseCommand):
         logger.info(
             f'New delinquent accounts: {len(new_delinquent_accounts_map.keys())}'
         )
-        logger.info(f'Legalized accounts: {len(complaint_accounts_ids)}')
+        logger.info(f'Legalized accounts: {len(compliant_accounts_ids)}')
 
-        return new_delinquent_accounts_map, complaint_accounts_ids
+        return new_delinquent_accounts_map, compliant_accounts_ids
