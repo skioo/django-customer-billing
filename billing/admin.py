@@ -492,8 +492,8 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
     def save_model(self, request, obj, form, change):
         update_fields = []
         if change:
-            if form.initial['tax_rate'] != form.cleaned_data['tax_rate']:
-                update_fields.append('tax_rate')
+            if form.initial['delinquent'] != form.cleaned_data['delinquent']:
+                update_fields.append('delinquent')
         obj.save(update_fields=update_fields)
 
     def get_queryset(self, request):
