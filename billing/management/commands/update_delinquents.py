@@ -1,5 +1,4 @@
 import json
-from typing import List, Tuple, Dict, Optional
 
 import structlog
 from django.core.management.base import BaseCommand
@@ -9,6 +8,7 @@ from ...actions.accounts import (
     swap_delinquent_status,
 )
 from ...models import Account
+from ...signals import update_delinquents_command_executed
 
 logger = structlog.get_logger()
 
@@ -57,11 +57,7 @@ class Command(BaseCommand):
             help='Shows accounts which delinquent status is going to change'
         )
 
-    def handle(
-        self,
-        *args,
-        **options
-    ) -> Optional[Tuple[Dict[int, List[str]], List[int]]]:
+    def handle(self, *args, **options):
         unpaid_invoices_threshold = options['unpaid_invoices']
         days_since_last_unpaid_threshold = options['days_since_last_unpaid']
         currency_amount_threshold_map = options['amount_thresholds']
@@ -87,4 +83,8 @@ class Command(BaseCommand):
             list(new_delinquent_accounts_map.keys()) + compliant_accounts_ids
         )
 
-        return new_delinquent_accounts_map, compliant_accounts_ids
+        update_delinquents_command_executed.send(
+            sender=self,
+            new_delinquent_accounts_map=new_delinquent_accounts_map,
+            compliant_accounts_ids=compliant_accounts_ids
+        )
