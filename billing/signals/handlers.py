@@ -1,4 +1,4 @@
-from datatrans.signals import alias_registration_done
+from billing_datatrans.signals import credit_card_registered
 from django.dispatch import receiver
 from structlog import get_logger
 
@@ -25,9 +25,8 @@ def new_delinquents_handler(sender, **kwargs):
     ])
 
 
-@receiver(alias_registration_done)
-def alias_registration_done_handler(sender, **kwargs):
-    instance = kwargs['instance']
-    success = kwargs['success']
-    print('*****************************************')
-    print(kwargs)
+@receiver(credit_card_registered)
+def credit_card_registered_handler(sender, **kwargs):
+    credit_card = kwargs['credit_card']
+    print('*' * 50)
+    print(credit_card)
