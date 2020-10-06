@@ -1,13 +1,13 @@
-from datetime import datetime, date
+from datetime import date, datetime
 from typing import Dict
 
 from django import forms
 from django.conf.urls import url
 from django.contrib import admin
-from django.db.models import Max, Prefetch, Count, Q
+from django.db.models import Count, Max, Prefetch, Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
-from django.urls import reverse, NoReverseMatch
+from django.urls import NoReverseMatch, reverse
 from django.utils.html import format_html, format_html_join
 from django.utils.translation import gettext_lazy as _
 from import_export import resources
@@ -16,12 +16,11 @@ from import_export.fields import Field
 from import_export.formats import base_formats
 from moneyed.localization import format_money
 from structlog import get_logger
-from .signals import new_delinquents
 
 from .actions import accounts, invoices
-from .models import (
-    Account, Charge, CreditCard, Invoice, Transaction, ProductProperty, EventLog,
-)
+from .models import (Account, Charge, CreditCard, EventLog, Invoice, ProductProperty,
+                     Transaction)
+from .signals import new_delinquents
 
 logger = get_logger()
 
@@ -642,18 +641,16 @@ class AccountAdmin(AppendOnlyModelAdmin):
     inlines = [CreditCardInline, ChargeInline, InvoiceInline, TransactionInline]
 
     def save_model(self, request, obj, form, change):
-        print('**************************')
-        print(form.changed_data)
-        print(f'delinquent={obj.delinquent}')
         super().save_model(request, obj, form, change)
-        if self._delinquent_status_has_changed():
+        if self._delinquent_status_has_changed(obj, form):
             new_delinquents.send(
                 sender=self,
                 new_delinquent_accounts_map={obj.id: ['Manually']}
             )
 
-    def _delinquent_status_has_changed(self) -> bool:
-        return True
+    @staticmethod
+    def _delinquent_status_has_changed(obj: Account, form: forms.Form) -> bool:
+        return 'delinquent' in form.changed_data and obj.delinquent
 
     def get_urls(self):
         urls = super().get_urls()
