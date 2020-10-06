@@ -16,6 +16,7 @@ from import_export.fields import Field
 from import_export.formats import base_formats
 from moneyed.localization import format_money
 from structlog import get_logger
+from .signals import new_delinquents
 
 from .actions import accounts, invoices
 from .models import (
@@ -639,6 +640,20 @@ class AccountAdmin(AppendOnlyModelAdmin):
                        assign_funds_to_pending_invoices_button]
 
     inlines = [CreditCardInline, ChargeInline, InvoiceInline, TransactionInline]
+
+    def save_model(self, request, obj, form, change):
+        print('**************************')
+        print(form.changed_data)
+        print(f'delinquent={obj.delinquent}')
+        super().save_model(request, obj, form, change)
+        if self._delinquent_status_has_changed():
+            new_delinquents.send(
+                sender=self,
+                new_delinquent_accounts_map={obj.id: ['Manually']}
+            )
+
+    def _delinquent_status_has_changed(self) -> bool:
+        return True
 
     def get_urls(self):
         urls = super().get_urls()
