@@ -1,3 +1,4 @@
+from datatrans.signals import alias_registration_done
 from django.dispatch import receiver
 from structlog import get_logger
 
@@ -22,3 +23,11 @@ def new_delinquents_handler(sender, **kwargs):
         )
         for account_id, reasons in new_delinquent_accounts_map.items()
     ])
+
+
+@receiver(alias_registration_done)
+def alias_registration_done_handler(sender, **kwargs):
+    instance = kwargs['instance']
+    success = kwargs['success']
+    print('*****************************************')
+    print(kwargs)
