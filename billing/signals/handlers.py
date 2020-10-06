@@ -33,15 +33,15 @@ def credit_card_registered_handler(sender, **kwargs):
     print(credit_card)
     account = credit_card.account
     if account.delinquent:
-        pending_invoices_ids = account.invoices.payable().only('pk')
+        pending_invoices = account.invoices.payable().only('pk')
         logger.info(
             'creditcard-registered-handler',
-            pending_invoices_ids=pending_invoices_ids
+            pending_invoices=pending_invoices
         )
         payments = []
-        for invoice_id in pending_invoices_ids:
-            payment = invoices.pay_with_account_credit_cards(invoice_id)
+        for invoice in pending_invoices:
+            payment = invoices.pay_with_account_credit_cards(invoice.id)
             payments.append(payment)
-        if len(payments) == len(pending_invoices_ids):
+        if len(payments) == len(pending_invoices):
             account.mark_as_compliant()
 
