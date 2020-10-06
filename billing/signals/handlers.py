@@ -40,7 +40,8 @@ def credit_card_registered_handler(sender, **kwargs):
         )
         payments = []
         for invoice in pending_invoices:
-            payment = invoices.pay_with_account_credit_cards(invoice.id)
+            print(f'invoice.pk={invoice.pk}')
+            payment = invoices.pay_with_account_credit_cards(invoice.pk)
             payments.append(payment)
         if len(payments) == len(pending_invoices):
             account.mark_as_compliant()
