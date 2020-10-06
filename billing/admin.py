@@ -644,7 +644,7 @@ class AccountAdmin(AppendOnlyModelAdmin):
         update_fields = []
         for key, value in form.cleaned_data.items():
             # True if something changed in model
-            if value != form.initial[key]:
+            if key in form.initial and value != form.initial[key]:
                 update_fields.append(key)
         obj.save(update_fields=update_fields)
 
