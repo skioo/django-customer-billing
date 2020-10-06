@@ -29,8 +29,6 @@ def new_delinquents_handler(sender, **kwargs):
 @receiver(credit_card_registered)
 def credit_card_registered_handler(sender, **kwargs):
     credit_card = kwargs['credit_card']
-    print('*' * 50)
-    print(credit_card)
     account = credit_card.account
     if account.delinquent:
         pending_invoices = account.invoices.payable().only('pk')
@@ -40,7 +38,6 @@ def credit_card_registered_handler(sender, **kwargs):
         )
         payments = []
         for invoice in pending_invoices:
-            print(f'invoice.pk={invoice.pk}')
             payment = invoices.pay_with_account_credit_cards(invoice.pk)
             payments.append(payment)
         if len(payments) == len(pending_invoices):
