@@ -85,7 +85,8 @@ class Command(BaseCommand):
             list(new_delinquent_accounts_map.keys()) + compliant_accounts_ids
         )
 
-        new_delinquents.send(
-            sender=self,
-            new_delinquent_accounts_map=new_delinquent_accounts_map
-        )
+        if new_delinquent_accounts_map:
+            new_delinquents.send(
+                sender=self,
+                new_delinquent_accounts_map=new_delinquent_accounts_map
+            )

@@ -1,7 +1,6 @@
 from django.dispatch import receiver
 from structlog import get_logger
 
-from billing.models import Account
 from billing.signals import new_delinquents
 from ..models import EventLog
 
@@ -17,7 +16,7 @@ def new_delinquents_handler(sender, **kwargs):
     )
     EventLog.objects.bulk_create([
         EventLog(
-            account_id=Account.objects.get(id=account_id).owner_id,
+            account_id=account_id,
             type=EventLog.NEW_DELINQUENT,
             text='\n'.join(reasons)
         )
