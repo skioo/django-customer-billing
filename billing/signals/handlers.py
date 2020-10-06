@@ -17,7 +17,7 @@ def new_delinquents_handler(sender, **kwargs):
     )
     EventLog.objects.bulk_create([
         EventLog(
-            user_id=Account.objects.get(id=account_id).owner_id,
+            account_id=Account.objects.get(id=account_id).owner_id,
             type=EventLog.NEW_DELINQUENT,
             text='\n'.join(reasons)
         )
