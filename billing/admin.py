@@ -640,14 +640,6 @@ class AccountAdmin(AppendOnlyModelAdmin):
 
     inlines = [CreditCardInline, ChargeInline, InvoiceInline, TransactionInline]
 
-    def save_model(self, request, obj, form, change):
-        update_fields = []
-        for key, value in form.cleaned_data.items():
-            # True if something changed in model
-            if key in form.initial and value != form.initial[key]:
-                update_fields.append(key)
-        obj.save(update_fields=update_fields)
-
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
