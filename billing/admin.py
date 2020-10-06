@@ -18,7 +18,9 @@ from moneyed.localization import format_money
 from structlog import get_logger
 
 from .actions import accounts, invoices
-from .models import Account, Charge, CreditCard, Invoice, Transaction, ProductProperty
+from .models import (
+    Account, Charge, CreditCard, Invoice, Transaction, ProductProperty, EventLog,
+)
 
 logger = get_logger()
 
@@ -669,3 +671,34 @@ class AccountAdmin(AppendOnlyModelAdmin):
             .annotate(
             credit_card_count=Count('credit_cards'),
             valid_credit_card_count=Count('credit_cards', filter=Q(credit_cards__expiry_date__gte=date.today())))
+
+
+def created_on(obj):
+    return obj.created.date()
+
+
+created_on.admin_order_field = 'created'  # type: ignore
+
+
+def modified_on(obj):
+    return obj.modified.date()
+
+
+modified_on.admin_order_field = 'modified'  # type: ignore
+
+
+def link_to_account(obj):
+    url = reverse('admin:billing_account_change', args=(obj.account.pk,))
+    return format_html(
+        f'<a href="{url}" target="_blank">{obj.account}</a>'
+    )
+
+
+@admin.register(EventLog)
+class EventLogAdmin(admin.ModelAdmin):
+    date_hierarchy = 'created'
+    list_display = ('created', 'type', 'text', link_to_account)
+    search_fields = ('account__owner__email',)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related('account')
