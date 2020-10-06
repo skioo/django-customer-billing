@@ -86,7 +86,7 @@ class Account(Model):
             self.delinquent = True
             self.save()
 
-    def mark_as_legal(self):
+    def mark_as_compliant(self):
         if self.delinquent:
             self.delinquent = False
             self.save()
