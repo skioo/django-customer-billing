@@ -33,7 +33,7 @@ def credit_card_registered_handler(sender, **kwargs):
     print(credit_card)
     account = credit_card.account
     if account.delinquent:
-        pending_invoices_ids = account.invoices.payable().only('id')
+        pending_invoices_ids = account.invoices.payable().only('pk')
         logger.info(
             'creditcard-registered-handler',
             pending_invoices_ids=pending_invoices_ids
