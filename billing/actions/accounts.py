@@ -287,7 +287,7 @@ def compute_account_violations(
     pending_invoices = account.invoices.filter(status=Invoice.PENDING)
     if (
         unpaid_invoices_threshold is not None
-        and pending_invoices.count() > unpaid_invoices_threshold
+        and pending_invoices.count() >= unpaid_invoices_threshold
     ):
         reasons.append(
             f'Account has more than {unpaid_invoices_threshold} pending invoices'
