@@ -8,7 +8,7 @@ from ...actions.accounts import (
     swap_delinquent_status,
 )
 from ...models import Account
-from ...signals import update_delinquents_command_executed
+from ...signals import new_delinquents
 
 logger = structlog.get_logger()
 
@@ -85,8 +85,7 @@ class Command(BaseCommand):
             list(new_delinquent_accounts_map.keys()) + compliant_accounts_ids
         )
 
-        update_delinquents_command_executed.send(
+        new_delinquents.send(
             sender=self,
-            new_delinquent_accounts_map=new_delinquent_accounts_map,
-            compliant_accounts_ids=compliant_accounts_ids
+            new_delinquent_accounts_map=new_delinquent_accounts_map
         )
