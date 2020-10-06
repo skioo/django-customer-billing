@@ -232,10 +232,10 @@ def assign_funds_to_invoice(invoice_id: str) -> bool:
 
 
 def get_accounts_which_delinquent_status_has_to_change(
-        account_ids: List[int],
-        unpaid_invoices_threshold: Optional[int],
-        days_since_last_unpaid_threshold: Optional[int],
-        currency_amount_threshold_map: Optional[dict],
+    account_ids: List[int],
+    unpaid_invoices_threshold: Optional[int],
+    days_since_last_unpaid_threshold: Optional[int],
+    currency_amount_threshold_map: Optional[dict],
 ) -> Tuple[Dict[int, List[str]], List[int]]:
     """
     Gets a summary of accounts which delinquent status have to be updated
@@ -253,10 +253,10 @@ def get_accounts_which_delinquent_status_has_to_change(
         New compliant accounts ids list
     )
     """
-    compliant_accounts = Account.objects.filter(id__in=account_ids)
+    accounts = Account.objects.filter(id__in=account_ids)
     new_delinquent_accounts_map = {}
     compliant_accounts_ids = []
-    for account in compliant_accounts:
+    for account in accounts:
         reasons = compute_account_violations(
             account,
             unpaid_invoices_threshold,
