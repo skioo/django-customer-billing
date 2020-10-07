@@ -321,7 +321,7 @@ def compute_account_violations(
     return reasons
 
 
-def swap_delinquent_status(account_ids: List[int]):
+def toggle_delinquent_status(account_ids: List[int]):
     """
     Swap delinquent status of each account
     """

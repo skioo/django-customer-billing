@@ -5,7 +5,7 @@ from django.core.management.base import BaseCommand
 
 from ...actions.accounts import (
     get_accounts_which_delinquent_status_has_to_change,
-    swap_delinquent_status,
+    toggle_delinquent_status,
 )
 from ...models import Account
 from ...signals import new_delinquents
@@ -75,13 +75,13 @@ class Command(BaseCommand):
 
         logger.info(
             'update-delinquents-command',
-            new_delinquent_accounts_map=new_delinquent_accounts_map,
-            compliant_accounts_ids=compliant_accounts_ids
+            new_delinquent_accounts=len(new_delinquent_accounts_map.keys()),
+            new_compliant_accounts=len(compliant_accounts_ids),
         )
         if dry_run:
             return
 
-        swap_delinquent_status(
+        toggle_delinquent_status(
             list(new_delinquent_accounts_map.keys()) + compliant_accounts_ids
         )
 

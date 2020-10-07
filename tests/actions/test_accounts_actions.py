@@ -198,10 +198,10 @@ class AccountActionsTest(TestCase):
         )
         assert not new_delinquent_accounts_map
 
-    def test_swap_delinquent_status(self):
+    def test_toggle_delinquent_status(self):
         self.account.delinquent = False
         self.account.save()
-        accounts.swap_delinquent_status([self.account.pk])
+        accounts.toggle_delinquent_status([self.account.pk])
         self.account.refresh_from_db()
         assert self.account.delinquent
 
