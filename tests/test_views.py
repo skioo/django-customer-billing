@@ -70,7 +70,8 @@ class AccountViewTest(TestCase):
                     'total': [],
                     'due': []
                 }
-            ]
+            ],
+            'delinquent': False,
         }
 
     def test_it_should_retrieve_charge_product_attributes(self):

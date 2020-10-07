@@ -6,15 +6,24 @@ so the creation of those is managed here.
 
 """
 from datetime import date
-from typing import Dict, Optional, Sequence
+from typing import Dict, Optional, Sequence, List, Tuple
 
 from django.db import transaction
+from django.db.models import Case, Value, When
 from moneyed import Money
 from structlog import get_logger
 
 from billing.signals import invoice_ready
-from ..models import Account, Charge, Invoice, ProductProperty, Transaction, CARRIED_FORWARD, CREDIT_REMAINING, \
-    total_amount
+from ..models import (
+    Account,
+    Charge,
+    Invoice,
+    ProductProperty,
+    Transaction,
+    CARRIED_FORWARD,
+    CREDIT_REMAINING,
+    total_amount,
+)
 
 logger = get_logger()
 
@@ -220,3 +229,103 @@ def assign_funds_to_invoice(invoice_id: str) -> bool:
             Charge.objects.create(account_id=account_id, amount=-overpayment, product_code=CREDIT_REMAINING)
 
     return invoice.status == Invoice.PAID
+
+
+def get_accounts_which_delinquent_status_has_to_change(
+    account_ids: List[int],
+    unpaid_invoices_threshold: Optional[int],
+    days_since_last_unpaid_threshold: Optional[int],
+    currency_amount_threshold_map: Optional[dict],
+) -> Tuple[Dict[int, List[str]], List[int]]:
+    """
+    Gets a summary of accounts which delinquent status have to be updated
+    :param account_ids: List of account ids to be evaluated
+    :param unpaid_invoices_threshold: Number of unpaid invoices to consider an account
+                                      as delinquent
+    :param days_since_last_unpaid_threshold: Days to take into account since the last
+                                             unpaid invoice to consider an account as
+                                             delinquent
+    :param currency_amount_threshold_map: Balance threshold to consider an account as
+                                          delinquent.
+                                          Ex: {'CHF': 200, 'EUR': 100, 'NOK': 150}
+    :return: (
+        New delinquent accounts and reason map. Ex: {111: ['Reason why', ...], ...},
+        New compliant accounts ids list
+    )
+    """
+    accounts = Account.objects.filter(id__in=account_ids)
+    new_delinquent_accounts_map = {}
+    new_compliant_accounts_ids = []
+    for account in accounts:
+        reasons = compute_account_violations(
+            account,
+            unpaid_invoices_threshold,
+            days_since_last_unpaid_threshold,
+            currency_amount_threshold_map,
+        )
+
+        if not account.delinquent and reasons:
+            new_delinquent_accounts_map[account.id] = reasons
+
+        elif account.delinquent and not reasons:
+            new_compliant_accounts_ids.append(account.id)
+
+    return new_delinquent_accounts_map, new_compliant_accounts_ids
+
+
+def compute_account_violations(
+    account: Account,
+    unpaid_invoices_threshold: Optional[int],
+    days_since_last_unpaid_threshold: Optional[int],
+    currency_amount_threshold_map: Optional[dict],
+) -> List[str]:
+    """
+    Check if an account has to be marked as delinquent
+    :return: Reasons why account has to be marked as delinquent
+    """
+    reasons = []
+    pending_invoices = account.invoices.filter(status=Invoice.PENDING)
+    if (
+        unpaid_invoices_threshold is not None
+        and pending_invoices.count() >= unpaid_invoices_threshold
+    ):
+        reasons.append(
+            f'Account has more than {unpaid_invoices_threshold} pending invoices'
+        )
+
+    if days_since_last_unpaid_threshold is not None and pending_invoices:
+        last_pending_invoice = pending_invoices.last()
+        days_since_last_pending_invoice = (
+            (date.today() - last_pending_invoice.due_date).days
+        )
+        if days_since_last_pending_invoice >= days_since_last_unpaid_threshold:
+            reasons.append(
+                f'Account has a debt since more than '
+                f'{days_since_last_unpaid_threshold} days'
+            )
+
+    if currency_amount_threshold_map:
+        account_balance = account.balance()
+        for amount_due in account_balance.monies():
+            currency = str(amount_due.currency)
+            if (
+                amount_due.amount < 0
+                and currency in currency_amount_threshold_map
+                and abs(amount_due.amount) > currency_amount_threshold_map[currency]
+            ):
+                reasons.append(
+                    f'Account has a debt of more than {abs(amount_due.amount)} '
+                    f'{currency}'
+                )
+
+    return reasons
+
+
+def toggle_delinquent_status(account_ids: List[int]):
+    """
+    Toggle delinquent status of each account
+    """
+    Account.objects.filter(id__in=account_ids).update(delinquent=Case(
+        When(delinquent=True, then=Value(False)),
+        default=Value(True)
+    ))

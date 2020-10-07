@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -108,3 +108,112 @@ class AccountActionsTest(TestCase):
             accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
 
         assert signal_handler.call_count == 1
+
+    def test_dont_mark_account_as_delinquent_when_account_balance_is_0(self):
+        new_delinquent_accounts_map, _ = (
+            accounts.get_accounts_which_delinquent_status_has_to_change(
+                [self.account.id],
+                unpaid_invoices_threshold=99,
+                days_since_last_unpaid_threshold=99,
+                currency_amount_threshold_map={'CHF': 200}
+            )
+        )
+        assert not new_delinquent_accounts_map
+
+    def test_mark_account_as_delinquent_when_pending_invoices_greater_than_specified_threshold(self):   # noqa
+        Charge.objects.create(
+            account=self.account,
+            amount=Money(10, 'CHF'),
+            product_code='10CHF'
+        )
+        accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
+        new_delinquent_accounts_map, _ = (
+            accounts.get_accounts_which_delinquent_status_has_to_change(
+                [self.account.id],
+                unpaid_invoices_threshold=0,
+                days_since_last_unpaid_threshold=99,
+                currency_amount_threshold_map={'CHF': 200}
+            )
+        )
+        assert self.account.id in new_delinquent_accounts_map.keys()
+
+    def test_mark_account_as_delinquent_when_last_pending_invoice_was_long_enough(self):    # noqa
+        Charge.objects.create(
+            account=self.account,
+            amount=Money(10, 'CHF'),
+            product_code='10CHF'
+        )
+        invoice = accounts.create_invoices(
+            account_id=self.account.pk,
+            due_date=date.today()
+        )[0]
+        invoice.due_date = invoice.created - timedelta(days=7)
+        invoice.save()
+        new_delinquent_accounts_map, _ = (
+            accounts.get_accounts_which_delinquent_status_has_to_change(
+                [self.account.id],
+                unpaid_invoices_threshold=1,
+                days_since_last_unpaid_threshold=6,
+                currency_amount_threshold_map={'CHF': 200}
+            )
+        )
+        assert self.account.id in new_delinquent_accounts_map.keys()
+
+    def test_mark_account_as_delinquent_when_user_debt_is_greater_than_specified_threshold(self):   # noqa
+        Charge.objects.create(
+            account=self.account,
+            amount=Money(10, 'CHF'),
+            product_code='10CHF'
+        )
+        accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
+        new_delinquent_accounts_map, _ = (
+            accounts.get_accounts_which_delinquent_status_has_to_change(
+                [self.account.id],
+                unpaid_invoices_threshold=1,
+                days_since_last_unpaid_threshold=6,
+                currency_amount_threshold_map={'CHF': 9}
+            )
+        )
+        assert self.account.id in new_delinquent_accounts_map.keys()
+
+    def test_dont_mark_account_as_delinquent_when_account_has_a_positive_balance(self):
+        Charge.objects.create(
+            account=self.account,
+            amount=Money(10, 'CHF'),
+            product_code='10CHF'
+        )
+        invoice = accounts.create_invoices(
+            account_id=self.account.pk,
+            due_date=date.today()
+        )[0]
+        invoice.status = Invoice.PAID
+        invoice.save()
+        new_delinquent_accounts_map, _ = (
+            accounts.get_accounts_which_delinquent_status_has_to_change(
+                [self.account.id],
+                unpaid_invoices_threshold=1,
+                days_since_last_unpaid_threshold=6,
+                currency_amount_threshold_map={'CHF': 50}
+            )
+        )
+        assert not new_delinquent_accounts_map
+
+    def test_toggle_delinquent_status(self):
+        self.account.delinquent = False
+        self.account.save()
+        accounts.toggle_delinquent_status([self.account.pk])
+        self.account.refresh_from_db()
+        assert self.account.delinquent
+
+    def test_update_account_from_delinquent_to_compliant(self):
+        self.account.delinquent = True
+        self.account.save()
+        _, compliant_accounts_ids = (
+            accounts.get_accounts_which_delinquent_status_has_to_change(
+                [self.account.id],
+                unpaid_invoices_threshold=99,
+                days_since_last_unpaid_threshold=99,
+                currency_amount_threshold_map={'CHF': 50}
+            )
+        )
+        assert compliant_accounts_ids

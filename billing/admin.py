@@ -1,13 +1,13 @@
-from datetime import datetime, date
+from datetime import date, datetime
 from typing import Dict
 
 from django import forms
 from django.conf.urls import url
 from django.contrib import admin
-from django.db.models import Max, Prefetch, Count, Q
+from django.db.models import Count, Max, Prefetch, Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
-from django.urls import reverse, NoReverseMatch
+from django.urls import NoReverseMatch, reverse
 from django.utils.html import format_html, format_html_join
 from django.utils.translation import gettext_lazy as _
 from import_export import resources
@@ -18,7 +18,11 @@ from moneyed.localization import format_money
 from structlog import get_logger
 
 from .actions import accounts, invoices
-from .models import Account, Charge, CreditCard, Invoice, Transaction, ProductProperty
+from .models import (
+    Account, Charge, CreditCard, EventLog, Invoice, ProductProperty,
+    Transaction,
+)
+from .signals import delinquent_status_updated
 
 logger = get_logger()
 
@@ -623,7 +627,10 @@ def do_assign_funds_to_pending_invoices(request, account_id):
 @admin.register(Account)
 class AccountAdmin(AppendOnlyModelAdmin):
     date_hierarchy = 'created'
-    list_display = ['owner', created_on, modified_on, payable_invoice_count, account_cc, 'currency', 'status']
+    list_display = [
+        'owner', created_on, modified_on, payable_invoice_count, account_cc, 'currency',
+        'status', 'delinquent'
+    ]
     search_fields = ['id', 'owner__email', 'owner__first_name', 'owner__last_name']
     ordering = ['-created']
     list_filter = [AccountCCFilter, 'currency', 'status']
@@ -634,6 +641,21 @@ class AccountAdmin(AppendOnlyModelAdmin):
                        assign_funds_to_pending_invoices_button]
 
     inlines = [CreditCardInline, ChargeInline, InvoiceInline, TransactionInline]
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        if 'delinquent' in form.changed_data:
+            delinquent_status_updated.send(
+                sender=self,
+                new_delinquent_accounts_map=(
+                    {obj.id: ['Manually']} if obj.delinquent else None
+                ),
+                new_compliant_accounts_ids=[obj.id] if not obj.delinquent else None
+            )
+
+    @staticmethod
+    def _delinquent_status_has_changed(obj: Account, form: forms.Form) -> bool:
+        return 'delinquent' in form.changed_data and obj.delinquent
 
     def get_urls(self):
         urls = super().get_urls()
@@ -658,3 +680,14 @@ class AccountAdmin(AppendOnlyModelAdmin):
             .annotate(
             credit_card_count=Count('credit_cards'),
             valid_credit_card_count=Count('credit_cards', filter=Q(credit_cards__expiry_date__gte=date.today())))
+
+
+@admin.register(EventLog)
+class EventLogAdmin(admin.ModelAdmin):
+    date_hierarchy = 'created'
+    list_display = ('created', 'type', 'text', link_to_account)
+    search_fields = ('account__owner__email',)
+    ordering = ('-created',)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related('account')

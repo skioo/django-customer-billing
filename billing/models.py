@@ -58,6 +58,7 @@ class Account(Model):
     owner = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='billing_account', on_delete=PROTECT)
     currency = CurrencyField(db_index=True)
     status = FSMField(max_length=20, choices=STATUS_CHOICES, default=OPEN, db_index=True)
+    delinquent = models.BooleanField(default=False, db_index=True)
 
     objects = AccountQuerySet.as_manager()
 
@@ -79,6 +80,16 @@ class Account(Model):
 
     def __str__(self):
         return str(self.owner)
+
+    def mark_as_delinquent(self):
+        if not self.delinquent:
+            self.delinquent = True
+            self.save()
+
+    def mark_as_compliant(self):
+        if self.delinquent:
+            self.delinquent = False
+            self.save()
 
 
 ########################################################################################################
@@ -366,3 +377,31 @@ class CreditCard(Model):
         if self.expiry_year is not None and self.expiry_month is not None:
             self.expiry_date = compute_expiry_date(two_digit_year=self.expiry_year, month=self.expiry_month)
         super().save(*args, **kwargs)
+
+
+class EventLogQuerySet(models.QuerySet):
+    def new_delinquent(self) -> models.QuerySet:
+        return self.filter(type=EventLog.NEW_DELINQUENT)
+
+
+class EventLog(models.Model):
+    NEW_DELINQUENT = 'NEW_DELINQUENT'
+    NEW_COMPLIANT = 'NEW_COMPLIANT'
+
+    TYPES = (
+        (NEW_DELINQUENT, 'New delinquent'),
+        (NEW_COMPLIANT, 'New compliant'),
+    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    created = models.DateTimeField(auto_now_add=True, db_index=True)
+    modified = models.DateTimeField(auto_now=True)
+    account = models.ForeignKey(Account, on_delete=PROTECT, related_name='event_logs')
+    type = models.CharField(max_length=20, choices=TYPES)
+    text = models.CharField(max_length=255, blank=True)
+
+    objects = EventLogQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = _('event log')
+        verbose_name_plural = _('event logs')
