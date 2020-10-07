@@ -30,7 +30,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--unpaid-invoices',
             type=int,
-            default=None,
+            default=1,
             help='Number of unpaid invoices to consider an user as a delinquent'
         )
         parser.add_argument(
