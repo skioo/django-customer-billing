@@ -62,6 +62,13 @@ class Command(BaseCommand):
         days_since_last_unpaid_threshold = options['days_since_last_unpaid']
         currency_amount_threshold_map = options['amount_thresholds']
         dry_run = options['dry_run']
+        logger.info(
+            'update-delinquents-command',
+            unpaid_invoices_threshold=unpaid_invoices_threshold,
+            days_since_last_unpaid_threshold=days_since_last_unpaid_threshold,
+            currency_amount_threshold_map=currency_amount_threshold_map,
+            dry_run=dry_run,
+        )
 
         account_ids = Account.objects.values_list('id', flat=True)
         new_delinquent_accounts_map, new_compliant_accounts_ids = (

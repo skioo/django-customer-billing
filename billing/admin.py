@@ -687,6 +687,7 @@ class EventLogAdmin(admin.ModelAdmin):
     date_hierarchy = 'created'
     list_display = ('created', 'type', 'text', link_to_account)
     search_fields = ('account__owner__email',)
+    ordering = ('-created',)
 
     def get_queryset(self, request):
         return super().get_queryset(request).prefetch_related('account')
