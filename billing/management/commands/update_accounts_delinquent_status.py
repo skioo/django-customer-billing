@@ -8,7 +8,7 @@ from ...actions.accounts import (
     toggle_delinquent_status,
 )
 from ...models import Account
-from ...signals import new_delinquents
+from ...signals import delinquent_status_updated
 
 logger = structlog.get_logger()
 
@@ -86,7 +86,8 @@ class Command(BaseCommand):
         )
 
         if new_delinquent_accounts_map:
-            new_delinquents.send(
+            delinquent_status_updated.send(
                 sender=self,
-                new_delinquent_accounts_map=new_delinquent_accounts_map
+                new_delinquent_accounts_map=new_delinquent_accounts_map,
+                compliant_accounts_ids=compliant_accounts_ids,
             )

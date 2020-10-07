@@ -18,9 +18,11 @@ from moneyed.localization import format_money
 from structlog import get_logger
 
 from .actions import accounts, invoices
-from .models import (Account, Charge, CreditCard, EventLog, Invoice, ProductProperty,
-                     Transaction)
-from .signals import new_delinquents
+from .models import (
+    Account, Charge, CreditCard, EventLog, Invoice, ProductProperty,
+    Transaction,
+)
+from .signals import delinquent_status_updated
 
 logger = get_logger()
 
@@ -643,7 +645,7 @@ class AccountAdmin(AppendOnlyModelAdmin):
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
         if self._delinquent_status_has_changed(obj, form):
-            new_delinquents.send(
+            delinquent_status_updated.send(
                 sender=self,
                 new_delinquent_accounts_map={obj.id: ['Manually']}
             )

@@ -5,4 +5,6 @@ from django.dispatch import Signal
 # invoice is saved it doesn't yet have charges attached)
 invoice_ready = Signal(providing_args=['invoice'], use_caching=True)
 
-new_delinquents = Signal(providing_args=['account_id_reasons_map'])
+delinquent_status_updated = Signal(
+    providing_args=['new_delinquent_accounts_map', 'compliant_accounts_ids']
+)

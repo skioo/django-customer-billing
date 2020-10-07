@@ -386,9 +386,11 @@ class EventLogQuerySet(models.QuerySet):
 
 class EventLog(models.Model):
     NEW_DELINQUENT = 'NEW_DELINQUENT'
+    NEW_COMPLIANT = 'NEW_COMPLIANT'
 
     TYPES = (
         (NEW_DELINQUENT, 'New delinquent'),
+        (NEW_COMPLIANT, 'New compliant'),
     )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

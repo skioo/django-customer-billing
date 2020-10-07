@@ -32,7 +32,10 @@ class Migration(migrations.Migration):
                 ('created', models.DateTimeField(auto_now_add=True, db_index=True)),
                 ('modified', models.DateTimeField(auto_now=True)),
                 ('type', models.CharField(
-                    choices=[('NEW_DELINQUENT', 'New delinquent')],
+                    choices=[
+                        ('NEW_DELINQUENT', 'New delinquent'),
+                        ('NEW_COMPLIANT', 'New compliant')
+                    ],
                     max_length=20
                 )),
                 ('text', models.CharField(blank=True, max_length=255)),
