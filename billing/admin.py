@@ -682,27 +682,6 @@ class AccountAdmin(AppendOnlyModelAdmin):
             valid_credit_card_count=Count('credit_cards', filter=Q(credit_cards__expiry_date__gte=date.today())))
 
 
-def created_on(obj):
-    return obj.created.date()
-
-
-created_on.admin_order_field = 'created'  # type: ignore
-
-
-def modified_on(obj):
-    return obj.modified.date()
-
-
-modified_on.admin_order_field = 'modified'  # type: ignore
-
-
-def link_to_account(obj):
-    url = reverse('admin:billing_account_change', args=(obj.account.pk,))
-    return format_html(
-        f'<a href="{url}" target="_blank">{obj.account}</a>'
-    )
-
-
 @admin.register(EventLog)
 class EventLogAdmin(admin.ModelAdmin):
     date_hierarchy = 'created'

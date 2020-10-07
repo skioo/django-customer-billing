@@ -5,4 +5,5 @@ class BillingConfig(AppConfig):
     name = 'billing'
 
     def ready(self):
-        import billing.signals.handlers
+        # noinspection PyUnresolvedReferences
+        import billing.signals.handlers  # noqa: F401
