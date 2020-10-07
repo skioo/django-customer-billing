@@ -241,11 +241,11 @@ def get_accounts_which_delinquent_status_has_to_change(
     Gets a summary of accounts which delinquent status have to be updated
     :param account_ids: List of account ids to be evaluated
     :param unpaid_invoices_threshold: Number of unpaid invoices to consider an account
-                                      as a delinquent
+                                      as delinquent
     :param days_since_last_unpaid_threshold: Days to take into account since the last
-                                             unpaid invoice to consider an account as a
+                                             unpaid invoice to consider an account as
                                              delinquent
-    :param currency_amount_threshold_map: Balance threshold to consider an account as a
+    :param currency_amount_threshold_map: Balance threshold to consider an account as
                                           delinquent.
                                           Ex: {'CHF': 200, 'EUR': 100, 'NOK': 150}
     :return: (

@@ -31,7 +31,7 @@ class Command(BaseCommand):
             '--unpaid-invoices',
             type=int,
             default=1,
-            help='Number of unpaid invoices to consider an account as a delinquent'
+            help='Number of unpaid invoices to consider an account as delinquent'
         )
         parser.add_argument(
             '--days-since-last-unpaid',
@@ -39,7 +39,7 @@ class Command(BaseCommand):
             default=None,
             help=(
                 'Days to take into account since the last unpaid invoice to consider '
-                'an account as a delinquent'
+                'an account as delinquent'
             )
         )
         parser.add_argument(
@@ -47,7 +47,7 @@ class Command(BaseCommand):
             type=json.loads,
             default=None,
             help=(
-                'Balance threshold to consider an account as a delinquent. '
+                'Balance threshold to consider an account as delinquent. '
                 'Ex: \'{"CHF": 200, "EUR": 100, "NOK": 150}\''
             )
         )
