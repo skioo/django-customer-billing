@@ -323,7 +323,7 @@ def compute_account_violations(
 
 def toggle_delinquent_status(account_ids: List[int]):
     """
-    Swap delinquent status of each account
+    Toggle delinquent status of each account
     """
     Account.objects.filter(id__in=account_ids).update(delinquent=Case(
         When(delinquent=True, then=Value(False)),
