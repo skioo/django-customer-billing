@@ -6,5 +6,5 @@ from django.dispatch import Signal
 invoice_ready = Signal(providing_args=['invoice'], use_caching=True)
 
 delinquent_status_updated = Signal(
-    providing_args=['new_delinquent_accounts_map', 'compliant_accounts_ids']
+    providing_args=['new_delinquent_accounts_map', 'new_compliant_accounts_ids']
 )

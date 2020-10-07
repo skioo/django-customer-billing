@@ -64,7 +64,7 @@ class Command(BaseCommand):
         dry_run = options['dry_run']
 
         account_ids = Account.objects.values_list('id', flat=True)
-        new_delinquent_accounts_map, compliant_accounts_ids = (
+        new_delinquent_accounts_map, new_compliant_accounts_ids = (
             get_accounts_which_delinquent_status_has_to_change(
                 account_ids,
                 unpaid_invoices_threshold,
@@ -76,18 +76,18 @@ class Command(BaseCommand):
         logger.info(
             'update-delinquents-command',
             new_delinquent_accounts=len(new_delinquent_accounts_map.keys()),
-            new_compliant_accounts=len(compliant_accounts_ids),
+            new_compliant_accounts=len(new_compliant_accounts_ids),
         )
         if dry_run:
             return
 
         toggle_delinquent_status(
-            list(new_delinquent_accounts_map.keys()) + compliant_accounts_ids
+            list(new_delinquent_accounts_map.keys()) + new_compliant_accounts_ids
         )
 
-        if new_delinquent_accounts_map:
+        if new_delinquent_accounts_map or new_compliant_accounts_ids:
             delinquent_status_updated.send(
                 sender=self,
                 new_delinquent_accounts_map=new_delinquent_accounts_map,
-                compliant_accounts_ids=compliant_accounts_ids,
+                new_compliant_accounts_ids=new_compliant_accounts_ids,
             )

@@ -255,7 +255,7 @@ def get_accounts_which_delinquent_status_has_to_change(
     """
     accounts = Account.objects.filter(id__in=account_ids)
     new_delinquent_accounts_map = {}
-    compliant_accounts_ids = []
+    new_compliant_accounts_ids = []
     for account in accounts:
         reasons = compute_account_violations(
             account,
@@ -268,9 +268,9 @@ def get_accounts_which_delinquent_status_has_to_change(
             new_delinquent_accounts_map[account.id] = reasons
 
         elif account.delinquent and not reasons:
-            compliant_accounts_ids.append(account.id)
+            new_compliant_accounts_ids.append(account.id)
 
-    return new_delinquent_accounts_map, compliant_accounts_ids
+    return new_delinquent_accounts_map, new_compliant_accounts_ids
 
 
 def compute_account_violations(

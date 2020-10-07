@@ -11,15 +11,15 @@ logger = get_logger()
 def delinquent_status_updated_handler(
     sender,
     new_delinquent_accounts_map=None,
-    compliant_accounts_ids=None,
+    new_compliant_accounts_ids=None,
     **kwargs
 ):
     new_delinquent_accounts_map = new_delinquent_accounts_map or {}
-    compliant_accounts_ids = compliant_accounts_ids or []
+    new_compliant_accounts_ids = new_compliant_accounts_ids or []
     logger.info(
         'new-delinquents-handler',
         new_delinquent_accounts=new_delinquent_accounts_map.keys(),
-        new_compliant_accounts=compliant_accounts_ids,
+        new_compliant_accounts=new_compliant_accounts_ids,
     )
     EventLog.objects.bulk_create([
         EventLog(
@@ -34,5 +34,5 @@ def delinquent_status_updated_handler(
             account_id=account_id,
             type=EventLog.NEW_COMPLIANT,
         )
-        for account_id in compliant_accounts_ids
+        for account_id in new_compliant_accounts_ids
     ])
