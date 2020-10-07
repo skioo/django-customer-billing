@@ -17,7 +17,7 @@ def delinquent_status_updated_handler(
     new_delinquent_accounts_map = new_delinquent_accounts_map or {}
     new_compliant_accounts_ids = new_compliant_accounts_ids or []
     logger.info(
-        'new-delinquents-handler',
+        'delinquent-status-updated-handler',
         new_delinquent_accounts=new_delinquent_accounts_map.keys(),
         new_compliant_accounts=new_compliant_accounts_ids,
     )
