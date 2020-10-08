@@ -314,7 +314,7 @@ class TransactionAdmin(ExportMixin, AppendOnlyModelAdmin):
                     link_to_credit_card, 'success', link_to_invoice, amount,
                     psp_admin_link]
     list_display_links = ['type']
-    search_fields = ['credit_card__number', 'amount'] + account_owner_search_fields
+    search_fields = ['credit_card_number', 'amount'] + account_owner_search_fields
     list_filter = ['payment_method', 'success', 'amount_currency']
     ordering = ['-created']
     list_select_related = True

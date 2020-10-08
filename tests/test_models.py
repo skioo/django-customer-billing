@@ -246,9 +246,8 @@ class AccountTest(TestCase):
         Charge.objects.create(account=account, amount=Money(10, 'CHF'), product_code='ACHARGE')
         Charge.objects.create(account=account, amount=Money(-3, 'CHF'), product_code='ACREDIT')
         psp_payment = MyPSPPayment(payment_ref='apaymentref')
-        Transaction.objects.create(account=account, amount=Money(6, 'CHF'),
-                                   success=True, payment_method='VIS',
-                                   credit_card_number='4111 1111 1111 1111',
+        Transaction.objects.create(account=account, amount=Money(6, 'CHF'), success=True,
+                                   payment_method='VIS', credit_card_number='4111 1111 1111 1111',
                                    psp_object=psp_payment)
         with self.assertNumQueries(2):
             assert account.balance() == Total(-1, 'CHF')
@@ -257,9 +256,8 @@ class AccountTest(TestCase):
         account = Account.objects.create(owner=self.user, currency='CHF')
         Charge.objects.create(account=account, amount=Money(10, 'CHF'), product_code='ACHARGE')
         psp_payment = MyPSPPayment(payment_ref='apaymentref')
-        Transaction.objects.create(account=account, amount=Money(6, 'CHF'),
-                                   success=False, payment_method='VIS',
-                                   credit_card_number='4111 1111 1111 1111',
+        Transaction.objects.create(account=account, amount=Money(6, 'CHF'), success=False,
+                                   payment_method='VIS', credit_card_number='4111 1111 1111 1111',
                                    psp_object=psp_payment)
         with self.assertNumQueries(2):
             assert account.balance() == Total(-10, 'CHF')
