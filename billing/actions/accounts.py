@@ -6,7 +6,7 @@ so the creation of those is managed here.
 
 """
 from datetime import date
-from typing import Dict, Optional, Sequence, List, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from django.db import transaction
 from django.db.models import Case, Value, When
@@ -14,16 +14,9 @@ from moneyed import Money
 from structlog import get_logger
 
 from billing.signals import invoice_ready
-from ..models import (
-    Account,
-    Charge,
-    Invoice,
-    ProductProperty,
-    Transaction,
-    CARRIED_FORWARD,
-    CREDIT_REMAINING,
-    total_amount,
-)
+from . import invoices
+from ..models import (Account, CARRIED_FORWARD, CREDIT_REMAINING, Charge, Invoice,
+                      ProductProperty, Transaction, total_amount)
 
 logger = get_logger()
 
@@ -329,3 +322,14 @@ def toggle_delinquent_status(account_ids: List[int]):
         When(delinquent=True, then=Value(False)),
         default=Value(True)
     ))
+
+
+def charge_pending_invoices(account: Account):
+    pending_invoices = account.invoices.payable().only('pk')
+    logger.info('charge-pending-invoices', pending_invoices=pending_invoices)
+    payments = [
+        invoices.pay_with_account_credit_cards(invoice.pk)
+        for invoice in pending_invoices
+    ]
+    if len(payments) == len(pending_invoices):
+        account.mark_as_compliant()

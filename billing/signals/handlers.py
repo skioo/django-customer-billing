@@ -1,7 +1,8 @@
 from django.dispatch import receiver
 from structlog import get_logger
 
-from billing.signals import delinquent_status_updated
+from billing.signals import credit_card_registered, delinquent_status_updated
+from ..actions.accounts import charge_pending_invoices
 from ..models import EventLog
 
 logger = get_logger()
@@ -36,3 +37,10 @@ def delinquent_status_updated_handler(
         )
         for account_id in new_compliant_accounts_ids
     ])
+
+
+@receiver(credit_card_registered)
+def credit_card_registered_handler(sender, credit_card, **kwargs):
+    account = credit_card.account
+    if account.delinquent:
+        charge_pending_invoices(account)
