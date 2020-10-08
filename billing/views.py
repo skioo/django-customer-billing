@@ -136,7 +136,7 @@ class AccountView(RetrieveAPIView):
 
 
 @permission_classes([permissions.IsAuthenticated])
-@api_view()
+@api_view(['POST'])
 def pay_debt(request):
     account = request.user.billing_account
     charge_pending_invoices(account)
