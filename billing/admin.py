@@ -137,6 +137,20 @@ link_to_invoice.admin_order_field = 'invoice'  # type: ignore
 link_to_invoice.short_description = 'Invoice'  # type: ignore
 
 
+def link_to_credit_card(obj):
+    credit_card_id = obj.credit_card_id
+    if credit_card_id is None:
+        return '-'
+    else:
+        text = '#{}'.format(credit_card_id)
+        url = reverse('admin:billing_creditcard_change', args=(credit_card_id,))
+        return format_html('<a href="{}">{}</a>', url, text)
+
+
+link_to_credit_card.admin_order_field = 'credit card'  # type: ignore
+link_to_credit_card.short_description = 'Credit card'  # type: ignore
+
+
 ##############################################################
 # Credit Cards
 
@@ -296,7 +310,8 @@ class TransactionResource(resources.ModelResource):
 class TransactionAdmin(ExportMixin, AppendOnlyModelAdmin):
     verbose_name_plural = 'Transactions'
     date_hierarchy = 'created'
-    list_display = ['type', created_on, link_to_account, 'payment_method', 'credit_card_number', 'success',
+    list_display = ['type', created_on, link_to_account, 'payment_method',
+                    'credit_card_number', link_to_credit_card, 'success',
                     link_to_invoice, amount, psp_admin_link]
     list_display_links = ['type']
     search_fields = ['credit_card_number', 'amount'] + account_owner_search_fields
