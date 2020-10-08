@@ -10,9 +10,18 @@ from .total import TotalSerializer, TotalIncludingZeroSerializer
 
 
 class CreditCardSerializer(serializers.ModelSerializer):
+    last_transaction_failed = serializers.SerializerMethodField()
+
     class Meta:
         model = CreditCard
         exclude = ['account', 'expiry_date', 'psp_content_type', 'psp_object_id']
+
+    @staticmethod
+    def get_last_transaction_failed(obj: CreditCard) -> bool:
+        last_transaction = obj.transactions.last()
+        if not last_transaction:
+            return False
+        return not last_transaction.success
 
 
 class CreditCardUpdateSerializer(serializers.ModelSerializer):
