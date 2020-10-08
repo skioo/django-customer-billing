@@ -294,8 +294,8 @@ class TransactionResource(resources.ModelResource):
 
     class Meta:
         model = Transaction
-        fields = ['id', 'created', 'modified', 'success', 'payment_method',
-                  'credit_card_number', 'account__owner__email', 'invoice']
+        fields = ['id', 'created', 'modified', 'success', 'credit_card',
+                  'account__owner__email', 'invoice']
 
     def dehydrate_amount(self, tx):
         if tx.amount is not None:
@@ -310,12 +310,10 @@ class TransactionResource(resources.ModelResource):
 class TransactionAdmin(ExportMixin, AppendOnlyModelAdmin):
     verbose_name_plural = 'Transactions'
     date_hierarchy = 'created'
-    list_display = ['type', created_on, link_to_account, 'payment_method',
-                    'credit_card_number', link_to_credit_card, 'success',
+    list_display = [created_on, link_to_account, link_to_credit_card, 'success',
                     link_to_invoice, amount, psp_admin_link]
-    list_display_links = ['type']
-    search_fields = ['credit_card_number', 'amount'] + account_owner_search_fields
-    list_filter = ['payment_method', 'success', 'amount_currency']
+    search_fields = ['credit_card__number', 'amount'] + account_owner_search_fields
+    list_filter = ['credit_card__type', 'success', 'amount_currency']
     ordering = ['-created']
     list_select_related = True
 
@@ -329,7 +327,7 @@ class TransactionAdmin(ExportMixin, AppendOnlyModelAdmin):
 
 class TransactionInline(admin.TabularInline):
     model = Transaction
-    fields = readonly_fields = ['type', 'payment_method', 'credit_card_number', created_on, 'success', amount,
+    fields = readonly_fields = ['type', link_to_credit_card, created_on, 'success', amount,
                                 link_to_invoice, psp_admin_link]
     show_change_link = True
     can_delete = False

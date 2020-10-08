@@ -293,8 +293,6 @@ class Transaction(Model):
     success = models.BooleanField()
     invoice = models.ForeignKey(Invoice, related_name='transactions', null=True, blank=True, on_delete=PROTECT)
     amount = MoneyField(max_digits=12, decimal_places=2)
-    payment_method = models.CharField(db_index=True, max_length=3)
-    credit_card_number = models.CharField(max_length=255, blank=True)
     credit_card = models.ForeignKey(
         'billing.CreditCard',
         related_name='transactions',
@@ -320,7 +318,7 @@ class Transaction(Model):
     def __str__(self):
         return '{}-{} ({})'.format(
             self.type,
-            self.credit_card_number,
+            self.credit_card.number,
             'success' if self.success else 'failure')
 
 

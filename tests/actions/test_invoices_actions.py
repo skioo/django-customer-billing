@@ -94,4 +94,4 @@ class InvoicesActionsTest(TestCase):
         payment = invoices.pay_with_account_credit_cards(invoice.pk)
         assert payment
         assert payment.success
-        assert payment.credit_card_number == '2222'
+        assert payment.credit_card.number == '2222'
