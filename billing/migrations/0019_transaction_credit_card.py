@@ -43,8 +43,4 @@ class Migration(migrations.Migration):
             model_name='transaction',
             name='credit_card_number',
         ),
-        migrations.RemoveField(
-            model_name='transaction',
-            name='payment_method',
-        ),
     ]

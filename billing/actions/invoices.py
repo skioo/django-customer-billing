@@ -62,6 +62,7 @@ def pay_with_account_credit_cards(invoice_id) -> Optional[Transaction]:
                     invoice=invoice,
                     amount=amount,
                     success=success,
+                    payment_method=credit_card.type,
                     credit_card=credit_card,
                     psp_object=payment_psp_object)
                 if success:

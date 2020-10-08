@@ -293,6 +293,7 @@ class Transaction(Model):
     success = models.BooleanField()
     invoice = models.ForeignKey(Invoice, related_name='transactions', null=True, blank=True, on_delete=PROTECT)
     amount = MoneyField(max_digits=12, decimal_places=2)
+    payment_method = models.CharField(db_index=True, max_length=3)
     credit_card = models.ForeignKey(
         'billing.CreditCard',
         related_name='transactions',

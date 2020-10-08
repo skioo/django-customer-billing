@@ -90,7 +90,7 @@
     "created": "2017-10-21T09:53:58.661Z",
     "modified": "2017-10-22T22:22:22.090Z",
     "account": "c8674163-9306-49ee-95ed-17860def82a4", "success": true,
-    "invoice": 3, "amount_currency": "CHF", "amount": "3.00",
+    "invoice": 3, "amount_currency": "CHF", "amount": "3.00", "payment_method": "bbb",
     "psp_content_type_id": 1, "psp_object_id": "00000000-0000-0000-0000-000000000000"
   }
 }, {
