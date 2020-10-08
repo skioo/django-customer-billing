@@ -295,6 +295,12 @@ class Transaction(Model):
     amount = MoneyField(max_digits=12, decimal_places=2)
     payment_method = models.CharField(db_index=True, max_length=3)
     credit_card_number = models.CharField(max_length=255, blank=True)
+    credit_card = models.ForeignKey(
+        'billing.CreditCard',
+        related_name='transactions',
+        null=True,
+        on_delete=PROTECT
+    )
 
     psp_content_type = models.ForeignKey(ContentType, blank=True, null=True, on_delete=CASCADE)
     psp_object_id = models.UUIDField(blank=True, null=True, db_index=True)
