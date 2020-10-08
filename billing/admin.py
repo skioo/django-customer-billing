@@ -138,12 +138,12 @@ link_to_invoice.short_description = 'Invoice'  # type: ignore
 
 
 def link_to_credit_card(obj):
-    credit_card_id = obj.credit_card_id
-    if credit_card_id is None:
-        return '-'
+    credit_card = obj.credit_card
+    if not credit_card:
+        return obj.credit_card_number
     else:
-        text = '{}'.format(obj.credit_card.number)
-        url = reverse('admin:billing_creditcard_change', args=(credit_card_id,))
+        text = '{}'.format(obj.credit_card_number)
+        url = reverse('admin:billing_creditcard_change', args=(credit_card.id,))
         return format_html('<a href="{}">{}</a>', url, text)
 
 

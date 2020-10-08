@@ -39,8 +39,4 @@ class Migration(migrations.Migration):
             ),
         ),
         migrations.RunPython(create_credit_card_relations),
-        migrations.RemoveField(
-            model_name='transaction',
-            name='credit_card_number',
-        ),
     ]
