@@ -366,6 +366,9 @@ class CreditCard(Model):
 
     objects = CreditCardQuerySet.as_manager()
 
+    def __str__(self) -> str:
+        return self.number
+
     @transition(field=status, source=ACTIVE, target=INACTIVE)
     def deactivate(self):
         pass

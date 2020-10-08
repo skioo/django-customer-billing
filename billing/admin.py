@@ -142,7 +142,7 @@ def link_to_credit_card(obj):
     if credit_card_id is None:
         return '-'
     else:
-        text = '#{}'.format(credit_card_id)
+        text = '{}'.format(obj.credit_card.number)
         url = reverse('admin:billing_creditcard_change', args=(credit_card_id,))
         return format_html('<a href="{}">{}</a>', url, text)
 
