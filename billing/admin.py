@@ -295,7 +295,7 @@ class TransactionResource(resources.ModelResource):
     class Meta:
         model = Transaction
         fields = ['id', 'created', 'modified', 'success', 'payment_method',
-                  'credit_card', 'account__owner__email', 'invoice']
+                  'credit_card_number', 'account__owner__email', 'invoice']
 
     def dehydrate_amount(self, tx):
         if tx.amount is not None:
