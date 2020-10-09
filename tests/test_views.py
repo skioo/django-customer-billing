@@ -15,7 +15,7 @@ class AccountViewTest(TestCase):
         client = APIClient()
         client.force_authenticate(user111)
 
-        with self.assertNumQueries(14):
+        with self.assertNumQueries(15):
             response = client.get(reverse('billing_account'))
         assert response.status_code == HTTP_200_OK
         assert response.json() == {
@@ -33,6 +33,7 @@ class AccountViewTest(TestCase):
                     'number': '1111',
                     'type': 'VIS',
                     'status': 'ACTIVE',
+                    'last_transaction_failed': False,
                 }
             ], 'transactions': [
             ], 'charges': [
@@ -79,7 +80,7 @@ class AccountViewTest(TestCase):
         client = APIClient()
         client.force_authenticate(user222)
 
-        with self.assertNumQueries(11):
+        with self.assertNumQueries(12):
             response = client.get(reverse('billing_account'))
         assert response.status_code == HTTP_200_OK
         assert response.json()['charges'][0] == {
@@ -109,7 +110,7 @@ class CreditCardViewTest(TestCase):
     def test_it_should_list_credit_cards(self):
         client = APIClient()
         client.force_authenticate(User.objects.get(id=111))
-        with self.assertNumQueries(1):
+        with self.assertNumQueries(2):
             response = client.get(reverse('billing_creditcard-list'))
         assert response.status_code == HTTP_200_OK
         assert len(response.json()) == 1
@@ -117,7 +118,7 @@ class CreditCardViewTest(TestCase):
     def test_it_should_retrieve_credit_card(self):
         client = APIClient()
         client.force_authenticate(User.objects.get(id=111))
-        with self.assertNumQueries(1):
+        with self.assertNumQueries(2):
             response = client.get(reverse('billing_creditcard-detail', args=[CREDIT_CARD_1_ID]))
         assert response.status_code == HTTP_200_OK
         assert response.json() == {
@@ -129,6 +130,7 @@ class CreditCardViewTest(TestCase):
             'number': '1111',
             'type': 'VIS',
             'status': 'ACTIVE',
+            'last_transaction_failed': False,
         }
 
     def test_it_should_prevent_retrieving_someone_elses_credit_card(self):

@@ -142,9 +142,8 @@ def link_to_credit_card(obj):
     if not credit_card:
         return obj.credit_card_number
 
-    text = '{}'.format(obj.credit_card_number)
     url = reverse('admin:billing_creditcard_change', args=(credit_card.id,))
-    return format_html('<a href="{}">{}</a>', url, text)
+    return format_html('<a href="{}">{}</a>', url, obj.credit_card_number)
 
 
 link_to_credit_card.admin_order_field = 'credit card'  # type: ignore
