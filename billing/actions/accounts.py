@@ -15,8 +15,10 @@ from structlog import get_logger
 
 from billing.signals import invoice_ready
 from . import invoices
-from ..models import (Account, CARRIED_FORWARD, CREDIT_REMAINING, Charge, Invoice,
-                      ProductProperty, Transaction, total_amount)
+from ..models import (
+    Account, CARRIED_FORWARD, CREDIT_REMAINING, Charge, Invoice,
+    ProductProperty, Transaction, total_amount,
+)
 
 logger = get_logger()
 
@@ -324,7 +326,8 @@ def toggle_delinquent_status(account_ids: List[int]):
     ))
 
 
-def charge_pending_invoices(account: Account):
+def charge_pending_invoices(account_id: str):
+    account = Account.objects.get(id=account_id)
     pending_invoices = account.invoices.payable().only('pk')
     logger.info('charge-pending-invoices', pending_invoices=pending_invoices)
     payments = [
