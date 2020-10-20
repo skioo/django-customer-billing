@@ -7,6 +7,7 @@ so the creation of those is managed here.
 """
 from datetime import date
 from typing import Dict, List, Optional, Sequence, Tuple
+from uuid import UUID
 
 from django.db import transaction
 from django.db.models import Case, Value, When
@@ -228,8 +229,8 @@ def assign_funds_to_invoice(invoice_id: str) -> bool:
 
 
 def get_accounts_which_delinquent_status_has_to_change(
-    account_ids: List[int]
-) -> Tuple[List[int], List[int]]:
+    account_ids: List[UUID]
+) -> Tuple[List[UUID], List[UUID]]:
     accounts = Account.objects.filter(id__in=account_ids)
     new_delinquent_account_ids = []
     new_compliant_account_ids = []
@@ -250,7 +251,7 @@ def is_account_violating_delinquent_criteria(account: Account) -> bool:
     return account.invoices.filter(status=Invoice.PENDING).count() > 0
 
 
-def toggle_delinquent_status(account_ids: List[int]):
+def toggle_delinquent_status(account_ids: List[UUID]):
     """
     Toggle delinquent status of each account
     """
@@ -260,7 +261,7 @@ def toggle_delinquent_status(account_ids: List[int]):
     ))
 
 
-def charge_pending_invoices(account_id: str) -> Dict[str, int]:
+def charge_pending_invoices(account_id: UUID) -> Dict[str, int]:
     account = Account.objects.get(id=account_id)
     pending_invoices = account.invoices.payable().only('pk')
     logger.info('charge-pending-invoices', pending_invoices=pending_invoices)
