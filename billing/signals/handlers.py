@@ -1,4 +1,5 @@
 from typing import List
+from uuid import UUID
 
 from django.dispatch import receiver
 from structlog import get_logger
@@ -13,8 +14,8 @@ logger = get_logger()
 @receiver(delinquent_status_updated)
 def delinquent_status_updated_handler(
     sender,
-    new_delinquent_account_ids: List[int] = None,
-    new_compliant_account_ids: List[int] = None,
+    new_delinquent_account_ids: List[UUID] = None,
+    new_compliant_account_ids: List[UUID] = None,
     **kwargs
 ):
     new_delinquent_account_ids = new_delinquent_account_ids or []
