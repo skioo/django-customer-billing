@@ -15,6 +15,7 @@ from structlog import get_logger
 
 from billing.signals import invoice_ready
 from . import invoices
+from .invoices import PreconditionError
 from ..models import (
     Account, CARRIED_FORWARD, CREDIT_REMAINING, Charge, Invoice,
     ProductProperty, Transaction, total_amount,
@@ -326,16 +327,26 @@ def toggle_delinquent_status(account_ids: List[int]):
     ))
 
 
-def charge_pending_invoices(account_id: str):
+def charge_pending_invoices(account_id: str) -> List[str]:
+    """
+    @param account_id: Billing account id
+    @return list of precondition errors
+    """
     account = Account.objects.get(id=account_id)
     pending_invoices = account.invoices.payable().only('pk')
     logger.info('charge-pending-invoices', pending_invoices=pending_invoices)
 
     payment_transactions = []
+    errors = []
     for invoice in pending_invoices:
-        payment_transaction = invoices.pay_with_account_credit_cards(invoice.pk)
-        if payment_transaction and payment_transaction.success:
-            payment_transactions.append(payment_transaction)
+        try:
+            payment_transaction = invoices.pay_with_account_credit_cards(invoice.pk)
+            if payment_transaction:
+                payment_transactions.append(payment_transaction)
+        except PreconditionError as e:
+            errors.append(str(e))
 
     if len(payment_transactions) == len(pending_invoices):
         account.mark_as_compliant()
+
+    return errors
