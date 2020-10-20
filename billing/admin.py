@@ -644,7 +644,7 @@ class AccountAdmin(AppendOnlyModelAdmin):
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        if 'delinquent' in form.changed_data:
+        if self._delinquent_status_has_changed(obj, form):
             delinquent_status_updated.send(
                 sender=self,
                 new_delinquent_account_ids=[obj.id] if obj.delinquent else None,
