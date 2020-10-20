@@ -48,6 +48,6 @@ class Command(BaseCommand):
         if new_delinquent_account_ids or new_compliant_account_ids:
             delinquent_status_updated.send(
                 sender=self,
-                new_delinquent_accounts_ids=new_delinquent_account_ids,
-                new_compliant_accounts_ids=new_compliant_account_ids,
+                new_delinquent_account_ids=new_delinquent_account_ids,
+                new_compliant_account_ids=new_compliant_account_ids,
             )
