@@ -234,7 +234,9 @@ def get_accounts_which_delinquent_status_has_to_change(
     new_delinquent_account_ids = []
     new_compliant_account_ids = []
     for account in accounts:
-        has_to_be_marked_as_delinquent = compute_account_violations(account)
+        has_to_be_marked_as_delinquent = is_account_violating_delinquent_criteria(
+            account
+        )
 
         if not account.delinquent and has_to_be_marked_as_delinquent:
             new_delinquent_account_ids.append(account.id)
@@ -244,7 +246,7 @@ def get_accounts_which_delinquent_status_has_to_change(
     return new_delinquent_account_ids, new_compliant_account_ids
 
 
-def compute_account_violations(account: Account) -> bool:
+def is_account_violating_delinquent_criteria(account: Account) -> bool:
     return account.invoices.filter(status=Invoice.PENDING).count() > 0
 
 
@@ -272,8 +274,7 @@ def charge_pending_invoices(account_id: str) -> Dict[str, int]:
         except PreconditionError:
             continue
 
-    has_to_be_marked_as_delinquent = compute_account_violations(account)
-    if not has_to_be_marked_as_delinquent:
+    if not is_account_violating_delinquent_criteria(account):
         account.mark_as_compliant()
 
     num_paid_invoices = len(payment_transactions)
