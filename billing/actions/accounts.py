@@ -258,7 +258,7 @@ def toggle_delinquent_status(account_ids: List[int]):
     ))
 
 
-def charge_pending_invoices(account_id: str) -> Dict[str, str]:
+def charge_pending_invoices(account_id: str) -> Dict[str, int]:
     account = Account.objects.get(id=account_id)
     pending_invoices = account.invoices.payable().only('pk')
     logger.info('charge-pending-invoices', pending_invoices=pending_invoices)
