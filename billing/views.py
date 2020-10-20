@@ -143,6 +143,7 @@ class AccountView(RetrieveAPIView):
 def pay_open_invoices_with_registered_credit_cards(request):
     account = request.user.billing_account
     assign_funds_to_account_pending_invoices(account_id=account.id)
-    errors = charge_pending_invoices(account_id=account.id)
+    summary = charge_pending_invoices(account_id=account.id)
+    account.refresh_from_db()
     success = not account.delinquent
-    return Response({'success': success, 'errors': errors}, status=HTTP_200_OK)
+    return Response({'success': success, 'summary': summary}, status=HTTP_200_OK)

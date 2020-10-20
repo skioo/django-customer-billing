@@ -18,7 +18,7 @@ router.register(
 urlpatterns = router.urls + [
     path('account', AccountView.as_view(), name='billing_account'),
     path(
-        'pay/debt',
+        'pay/open/invoices/with/registered/credit/cards',
         pay_open_invoices_with_registered_credit_cards,
         name='pay_open_invoices_with_registered_credit_cards'
     ),
