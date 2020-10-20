@@ -330,9 +330,12 @@ def charge_pending_invoices(account_id: str):
     account = Account.objects.get(id=account_id)
     pending_invoices = account.invoices.payable().only('pk')
     logger.info('charge-pending-invoices', pending_invoices=pending_invoices)
-    payments = [
-        invoices.pay_with_account_credit_cards(invoice.pk)
-        for invoice in pending_invoices
-    ]
-    if len(payments) == len(pending_invoices):
+
+    payment_transactions = []
+    for invoice in pending_invoices:
+        payment_transaction = invoices.pay_with_account_credit_cards(invoice.pk)
+        if payment_transaction and payment_transaction.success:
+            payment_transactions.append(payment_transaction)
+
+    if len(payment_transactions) == len(pending_invoices):
         account.mark_as_compliant()

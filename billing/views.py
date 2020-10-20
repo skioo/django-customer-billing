@@ -140,9 +140,8 @@ class AccountView(RetrieveAPIView):
 
 @permission_classes([permissions.IsAuthenticated])
 @api_view(['POST'])
-def pay_debt(request):
+def pay_open_invoices_with_registered_credit_cards(request):
     account = request.user.billing_account
     assign_funds_to_account_pending_invoices(account_id=account.id)
     charge_pending_invoices(account_id=account.id)
-    status = HTTP_400_BAD_REQUEST if account.delinquent else HTTP_200_OK
-    return Response({'delinquent': account.delinquent}, status=status)
+    return Response({'success': not account.delinquent}, status=HTTP_200_OK)
