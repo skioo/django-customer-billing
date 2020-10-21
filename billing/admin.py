@@ -644,16 +644,12 @@ class AccountAdmin(AppendOnlyModelAdmin):
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        if self._delinquent_status_has_changed(obj, form):
+        if 'delinquent' in form.changed_data:
             delinquent_status_updated.send(
                 sender=self,
                 new_delinquent_account_ids=[obj.id] if obj.delinquent else None,
                 new_compliant_account_ids=[obj.id] if not obj.delinquent else None
             )
-
-    @staticmethod
-    def _delinquent_status_has_changed(obj: Account, form: forms.Form) -> bool:
-        return 'delinquent' in form.changed_data and obj.delinquent
 
     def get_urls(self):
         urls = super().get_urls()
