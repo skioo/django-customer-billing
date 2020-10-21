@@ -1,12 +1,18 @@
 from django.http import Http404
 from rest_framework import permissions, serializers
-from rest_framework.decorators import permission_classes
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.generics import RetrieveAPIView
-from rest_framework.mixins import UpdateModelMixin, RetrieveModelMixin, ListModelMixin
+from rest_framework.mixins import ListModelMixin, RetrieveModelMixin, UpdateModelMixin
+from rest_framework.response import Response
+from rest_framework.status import HTTP_200_OK
 from rest_framework.viewsets import GenericViewSet
 
-from .models import Account, Charge, CreditCard, Invoice, Transaction, ProductProperty
-from .total import TotalSerializer, TotalIncludingZeroSerializer
+from .actions.accounts import (
+    assign_funds_to_account_pending_invoices,
+    charge_pending_invoices,
+)
+from .models import Account, Charge, CreditCard, Invoice, ProductProperty, Transaction
+from .total import TotalIncludingZeroSerializer, TotalSerializer
 
 
 class CreditCardSerializer(serializers.ModelSerializer):
@@ -130,3 +136,14 @@ class AccountView(RetrieveAPIView):
                 .get(owner=self.request.user)
         except Account.DoesNotExist:
             raise Http404('No Account matches the given query.')
+
+
+@permission_classes([permissions.IsAuthenticated])
+@api_view(['POST'])
+def pay_open_invoices_with_registered_credit_cards(request):
+    account = request.user.billing_account
+    assign_funds_to_account_pending_invoices(account_id=account.id)
+    summary = charge_pending_invoices(account_id=account.id)
+    account.refresh_from_db()
+    success = not account.delinquent
+    return Response({'success': success, 'summary': summary}, status=HTTP_200_OK)
