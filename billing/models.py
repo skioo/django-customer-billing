@@ -7,15 +7,15 @@ from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
-from django.core.validators import MaxValueValidator, MinValueValidator
-from django.core.validators import RegexValidator
+from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import models
-from django.db.models import Model, PROTECT, CASCADE, QuerySet, Sum, SET_NULL
+from django.db.models import CASCADE, Model, PROTECT, QuerySet, SET_NULL, Sum
 from django.utils.translation import gettext_lazy as _
 from django_fsm import FSMField, can_proceed, transition
 from djmoney.models.fields import CurrencyField, MoneyField
 from moneyed import Money
 
+from .signals import delinquent_status_updated
 from .total import Total
 
 
@@ -82,14 +82,26 @@ class Account(Model):
         return str(self.owner)
 
     def mark_as_delinquent(self):
-        if not self.delinquent:
-            self.delinquent = True
-            self.save()
+        if self.delinquent:
+            return
+
+        self.delinquent = True
+        self.save()
+        delinquent_status_updated.send(
+            sender=self.mark_as_delinquent,
+            new_delinquent_account_ids=[self.id],
+        )
 
     def mark_as_compliant(self):
-        if self.delinquent:
-            self.delinquent = False
-            self.save()
+        if not self.delinquent:
+            return
+
+        self.delinquent = False
+        self.save()
+        delinquent_status_updated.send(
+            sender=self.mark_as_compliant,
+            new_compliant_account_ids=[self.id],
+        )
 
 
 ########################################################################################################
