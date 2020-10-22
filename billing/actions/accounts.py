@@ -259,24 +259,26 @@ def get_reasons_account_is_violating_delinquent_criteria(
 
 def mark_account_as_delinquent(account_id: UUID, reason: str):
     account = Account.objects.get(id=account_id)
-    account.delinquent = True
-    account.save()
-    EventLog.objects.create(
-        account_id=account_id,
-        type=EventLog.NEW_DELINQUENT,
-        text=reason,
-    )
+    if not account.delinquent:
+        account.delinquent = True
+        account.save()
+        EventLog.objects.create(
+            account_id=account_id,
+            type=EventLog.NEW_DELINQUENT,
+            text=reason,
+        )
 
 
 def mark_account_as_compliant(account_id: UUID, reason: str):
     account = Account.objects.get(id=account_id)
-    account.delinquent = False
-    account.save()
-    EventLog.objects.create(
-        account_id=account_id,
-        type=EventLog.NEW_COMPLIANT,
-        text=reason,
-    )
+    if account.delinquent:
+        account.delinquent = False
+        account.save()
+        EventLog.objects.create(
+            account_id=account_id,
+            type=EventLog.NEW_COMPLIANT,
+            text=reason,
+        )
 
 
 def charge_pending_invoices(account_id: UUID) -> Dict[str, int]:
