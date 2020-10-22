@@ -33,6 +33,7 @@ class AccountViewTest(TestCase):
                     'number': '1111',
                     'type': 'VIS',
                     'status': 'ACTIVE',
+                    'expired': True,
                 }
             ], 'transactions': [
             ], 'charges': [
@@ -129,6 +130,7 @@ class CreditCardViewTest(TestCase):
             'number': '1111',
             'type': 'VIS',
             'status': 'ACTIVE',
+            'expired': True,
         }
 
     def test_it_should_prevent_retrieving_someone_elses_credit_card(self):
