@@ -20,6 +20,7 @@ from ..models import (
     Account, CARRIED_FORWARD, CREDIT_REMAINING, Charge, CreditCard,
     EventLog, Invoice, ProductProperty, Transaction, total_amount,
 )
+from ..signals import new_compliant_account, new_delinquent_account
 
 logger = get_logger()
 
@@ -267,6 +268,11 @@ def mark_account_as_delinquent(account_id: UUID, reason: str):
             type=EventLog.NEW_DELINQUENT,
             text=reason,
         )
+        new_delinquent_account.send(
+            sender=mark_account_as_delinquent,
+            account=account,
+            reason=reason
+        )
 
 
 def mark_account_as_compliant(account_id: UUID, reason: str):
@@ -278,6 +284,11 @@ def mark_account_as_compliant(account_id: UUID, reason: str):
             account_id=account_id,
             type=EventLog.NEW_COMPLIANT,
             text=reason,
+        )
+        new_compliant_account.send(
+            sender=mark_account_as_compliant,
+            account=account,
+            reason=reason
         )
 
 

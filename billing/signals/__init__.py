@@ -6,3 +6,7 @@ from django.dispatch import Signal
 invoice_ready = Signal(providing_args=['invoice'], use_caching=True)
 
 credit_card_registered = Signal(providing_args=['credit_card'])
+
+new_delinquent_account = Signal(providing_args=['account', 'reason'])
+
+new_compliant_account = Signal(providing_args=['account', 'reason'])
