@@ -301,7 +301,7 @@ def charge_pending_invoices(account_id: UUID) -> Dict[str, int]:
 
     reasons = get_reasons_account_is_violating_delinquent_criteria(account.id)
     if not reasons:
-        mark_account_as_compliant(account.id, reason='Requirements met again')
+        mark_account_as_compliant(account.id, reason='Pending invoices have been paid')
 
     num_paid_invoices = len(payment_transactions)
     return {
