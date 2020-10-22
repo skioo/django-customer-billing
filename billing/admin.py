@@ -22,7 +22,6 @@ from .models import (
     Account, Charge, CreditCard, EventLog, Invoice, ProductProperty,
     Transaction,
 )
-from .signals import delinquent_status_updated
 
 logger = get_logger()
 
@@ -645,11 +644,10 @@ class AccountAdmin(AppendOnlyModelAdmin):
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
         if 'delinquent' in form.changed_data:
-            delinquent_status_updated.send(
-                sender=self,
-                new_delinquent_account_ids=[obj.id] if obj.delinquent else None,
-                new_compliant_account_ids=[obj.id] if not obj.delinquent else None
-            )
+            if obj.delinquent:
+                accounts.mark_account_as_delinquent(obj.id, reason='Manually')
+            else:
+                accounts.mark_account_as_compliant(obj.id, reason='Manually')
 
     def get_urls(self):
         urls = super().get_urls()

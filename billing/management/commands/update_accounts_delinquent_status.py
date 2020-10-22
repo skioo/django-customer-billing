@@ -3,10 +3,11 @@ from django.core.management.base import BaseCommand
 
 from ...actions.accounts import (
     get_accounts_which_delinquent_status_has_to_change,
-    toggle_delinquent_status,
+    get_reasons_account_is_violating_delinquent_criteria,
+    mark_account_as_compliant,
+    mark_account_as_delinquent,
 )
 from ...models import Account
-from ...signals import delinquent_status_updated
 
 logger = structlog.get_logger()
 
@@ -14,7 +15,7 @@ logger = structlog.get_logger()
 class Command(BaseCommand):
     help = (
         'This command mark accounts as delinquent and vice versa when account has '
-        'pending invoices'
+        'pending invoices or not valid credit cards registered'
     )
 
     def add_arguments(self, parser):
@@ -41,13 +42,11 @@ class Command(BaseCommand):
         if dry_run:
             return
 
-        toggle_delinquent_status(
-            new_delinquent_account_ids + new_compliant_account_ids
-        )
+        accounts = Account.objects.filter(id__in=new_delinquent_account_ids)
+        for account in accounts:
+            reasons = get_reasons_account_is_violating_delinquent_criteria(account.id)
+            mark_account_as_delinquent(account.id, reason='. '.join(reasons))
 
-        if new_delinquent_account_ids or new_compliant_account_ids:
-            delinquent_status_updated.send(
-                sender=self,
-                new_delinquent_account_ids=new_delinquent_account_ids,
-                new_compliant_account_ids=new_compliant_account_ids,
-            )
+        accounts = Account.objects.filter(id__in=new_compliant_account_ids)
+        for account in accounts:
+            mark_account_as_compliant(account.id, reason='Requirements met again')

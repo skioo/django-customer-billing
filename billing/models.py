@@ -15,7 +15,6 @@ from django_fsm import FSMField, can_proceed, transition
 from djmoney.models.fields import CurrencyField, MoneyField
 from moneyed import Money
 
-from .signals import delinquent_status_updated
 from .total import Total
 
 
@@ -80,28 +79,6 @@ class Account(Model):
 
     def __str__(self):
         return str(self.owner)
-
-    def mark_as_delinquent(self):
-        if self.delinquent:
-            return
-
-        self.delinquent = True
-        self.save()
-        delinquent_status_updated.send(
-            sender=self.mark_as_delinquent,
-            new_delinquent_account_ids=[self.id],
-        )
-
-    def mark_as_compliant(self):
-        if not self.delinquent:
-            return
-
-        self.delinquent = False
-        self.save()
-        delinquent_status_updated.send(
-            sender=self.mark_as_compliant,
-            new_compliant_account_ids=[self.id],
-        )
 
 
 ########################################################################################################
