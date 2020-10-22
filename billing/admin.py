@@ -189,7 +189,6 @@ class CreditCardAdmin(AppendOnlyModelAdmin):
     readonly_fields = ['created', 'modified', 'expiry_date']
 
     def save_model(self, request, obj, form, change):
-        super().save_model(request, obj, form, change)
         if 'expiry_month' in form.changed_data or 'expiry_year' in form.changed_data:
             reasons = accounts.get_reasons_account_is_violating_delinquent_criteria(
                 obj.account.id
@@ -204,6 +203,7 @@ class CreditCardAdmin(AppendOnlyModelAdmin):
                     obj.account.id,
                     reason='Credit card turned valid again'
                 )
+        super().save_model(request, obj, form, change)
 
 
 class CreditCardInline(admin.TabularInline):
@@ -659,12 +659,12 @@ class AccountAdmin(AppendOnlyModelAdmin):
     inlines = [CreditCardInline, ChargeInline, InvoiceInline, TransactionInline]
 
     def save_model(self, request, obj, form, change):
-        super().save_model(request, obj, form, change)
         if 'delinquent' in form.changed_data:
             if obj.delinquent:
                 accounts.mark_account_as_delinquent(obj.id, reason='Manually')
             else:
                 accounts.mark_account_as_compliant(obj.id, reason='Manually')
+        super().save_model(request, obj, form, change)
 
     def get_urls(self):
         urls = super().get_urls()
