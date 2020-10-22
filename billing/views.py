@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.http import Http404
 from rest_framework import permissions, serializers
 from rest_framework.decorators import api_view, permission_classes
@@ -16,9 +18,15 @@ from .total import TotalIncludingZeroSerializer, TotalSerializer
 
 
 class CreditCardSerializer(serializers.ModelSerializer):
+    expired = serializers.SerializerMethodField()
+
     class Meta:
         model = CreditCard
         exclude = ['account', 'expiry_date', 'psp_content_type', 'psp_object_id']
+
+    @staticmethod
+    def get_expired(obj: CreditCard):
+        return obj.expiry_date < date.today()
 
 
 class CreditCardUpdateSerializer(serializers.ModelSerializer):
