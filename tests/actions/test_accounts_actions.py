@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -7,7 +7,7 @@ from moneyed import Money
 from pytest import raises
 
 from billing.actions import accounts
-from billing.models import Account, Charge, Invoice
+from billing.models import Account, Charge, CreditCard, Invoice
 from billing.signals import invoice_ready
 from billing.total import Total
 from ..helper import catch_signal
@@ -17,6 +17,15 @@ class AccountActionsTest(TestCase):
     def setUp(self):
         user = User.objects.create_user('a-username')
         self.account = Account.objects.create(owner=user, currency='CHF')
+        expiry_date = date.today() + timedelta(days=365)
+        self.credit_card = CreditCard.objects.create(
+            account=self.account,
+            type='VIS',
+            number='4111xxxxxxxx1111',
+            expiry_month=expiry_date.month,
+            expiry_year=expiry_date.year % 100,
+            psp_object=self.account,
+        )
 
     def test_it_should_add_charge(self):
         with self.assertNumQueries(4):
@@ -109,7 +118,7 @@ class AccountActionsTest(TestCase):
 
         assert signal_handler.call_count == 1
 
-    def test_dont_mark_account_as_delinquent_when_account_balance_is_0(self):
+    def test_dont_mark_account_as_delinquent_when_account_balance_is_0_and_has_valid_credit_card(self): # noqa
         new_delinquent_account_ids, _ = (
             accounts.get_accounts_which_delinquent_status_has_to_change(
                 [self.account.id]
@@ -124,6 +133,18 @@ class AccountActionsTest(TestCase):
             product_code='10CHF'
         )
         accounts.create_invoices(account_id=self.account.pk, due_date=date.today())
+        new_delinquent_account_ids, _ = (
+            accounts.get_accounts_which_delinquent_status_has_to_change(
+                [self.account.id]
+            )
+        )
+        assert self.account.id in new_delinquent_account_ids
+
+    def test_mark_account_as_delinquent_when_user_has_not_a_valid_credit_card(self):
+        expiry_date = date.today() - timedelta(days=31)
+        self.credit_card.expiry_year = expiry_date.year % 100
+        self.credit_card.expiry_month = expiry_date.month
+        self.credit_card.save()
         new_delinquent_account_ids, _ = (
             accounts.get_accounts_which_delinquent_status_has_to_change(
                 [self.account.id]
@@ -149,13 +170,6 @@ class AccountActionsTest(TestCase):
             )
         )
         assert not new_delinquent_account_ids
-
-    def test_toggle_delinquent_status(self):
-        self.account.delinquent = False
-        self.account.save()
-        accounts.toggle_delinquent_status([self.account.pk])
-        self.account.refresh_from_db()
-        assert self.account.delinquent
 
     def test_update_account_from_delinquent_to_compliant(self):
         self.account.delinquent = True
