@@ -10,7 +10,6 @@ from typing import Dict, List, Optional, Sequence, Tuple
 from uuid import UUID
 
 from django.db import transaction
-from django.db.models import Case, Value, When
 from moneyed import Money
 from structlog import get_logger
 
@@ -18,8 +17,8 @@ from billing.signals import invoice_ready
 from . import invoices
 from .invoices import PreconditionError
 from ..models import (
-    Account, CARRIED_FORWARD, CREDIT_REMAINING, Charge, Invoice,
-    ProductProperty, Transaction, total_amount,
+    Account, CARRIED_FORWARD, CREDIT_REMAINING, Charge, CreditCard,
+    EventLog, Invoice, ProductProperty, Transaction, total_amount,
 )
 
 logger = get_logger()
@@ -235,30 +234,51 @@ def get_accounts_which_delinquent_status_has_to_change(
     new_delinquent_account_ids = []
     new_compliant_account_ids = []
     for account in accounts:
-        has_to_be_marked_as_delinquent = is_account_violating_delinquent_criteria(
-            account
-        )
-
-        if not account.delinquent and has_to_be_marked_as_delinquent:
+        reasons = get_reasons_account_is_violating_delinquent_criteria(account.id)
+        if reasons and not account.delinquent:
             new_delinquent_account_ids.append(account.id)
-        elif account.delinquent and not has_to_be_marked_as_delinquent:
+        if not reasons and account.delinquent:
             new_compliant_account_ids.append(account.id)
 
     return new_delinquent_account_ids, new_compliant_account_ids
 
 
-def is_account_violating_delinquent_criteria(account: Account) -> bool:
-    return account.invoices.filter(status=Invoice.PENDING).count() > 0
+def get_reasons_account_is_violating_delinquent_criteria(
+    account_id: UUID
+) -> List[str]:
+    reasons = []
+    account = Account.objects.get(id=account_id)
+    if account.invoices.filter(status=Invoice.PENDING).count() > 0:
+        reasons.append('Account has pending invoices')
+
+    if not CreditCard.objects.filter(account=account).valid().exists():
+        reasons.append('Account has not any valid credit card registered')
+
+    return reasons
 
 
-def toggle_delinquent_status(account_ids: List[UUID]):
-    """
-    Toggle delinquent status of each account
-    """
-    Account.objects.filter(id__in=account_ids).update(delinquent=Case(
-        When(delinquent=True, then=Value(False)),
-        default=Value(True)
-    ))
+def mark_account_as_delinquent(account_id: UUID, reason: str):
+    account = Account.objects.get(id=account_id)
+    if not account.delinquent:
+        account.delinquent = True
+        account.save()
+        EventLog.objects.create(
+            account_id=account_id,
+            type=EventLog.NEW_DELINQUENT,
+            text=reason,
+        )
+
+
+def mark_account_as_compliant(account_id: UUID, reason: str):
+    account = Account.objects.get(id=account_id)
+    if account.delinquent:
+        account.delinquent = False
+        account.save()
+        EventLog.objects.create(
+            account_id=account_id,
+            type=EventLog.NEW_COMPLIANT,
+            text=reason,
+        )
 
 
 def charge_pending_invoices(account_id: UUID) -> Dict[str, int]:
@@ -275,8 +295,9 @@ def charge_pending_invoices(account_id: UUID) -> Dict[str, int]:
         except PreconditionError:
             continue
 
-    if not is_account_violating_delinquent_criteria(account):
-        account.mark_as_compliant()
+    reasons = get_reasons_account_is_violating_delinquent_criteria(account.id)
+    if not reasons:
+        mark_account_as_compliant(account.id, reason='Pending invoices have been paid')
 
     num_paid_invoices = len(payment_transactions)
     return {
