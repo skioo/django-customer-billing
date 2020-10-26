@@ -260,6 +260,7 @@ def get_reasons_account_is_violating_delinquent_criteria(
 def mark_account_as_delinquent(account_id: UUID, reason: str):
     account = Account.objects.get(id=account_id)
     if not account.delinquent:
+        logger.info('mark-account-as-delinquent', account_id=account_id, reason=reason)
         account.delinquent = True
         account.save()
         EventLog.objects.create(
@@ -272,6 +273,7 @@ def mark_account_as_delinquent(account_id: UUID, reason: str):
 def mark_account_as_compliant(account_id: UUID, reason: str):
     account = Account.objects.get(id=account_id)
     if account.delinquent:
+        logger.info('mark-account-as-compliant', account_id=account_id, reason=reason)
         account.delinquent = False
         account.save()
         EventLog.objects.create(

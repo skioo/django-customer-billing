@@ -1,3 +1,4 @@
+import progressbar
 import structlog
 from django.core.management.base import BaseCommand
 
@@ -43,10 +44,14 @@ class Command(BaseCommand):
             return
 
         accounts = Account.objects.filter(id__in=new_delinquent_account_ids)
+        bar = progressbar.ProgressBar()
+        accounts = bar(accounts)
         for account in accounts:
             reasons = get_reasons_account_is_violating_delinquent_criteria(account.id)
             mark_account_as_delinquent(account.id, reason='. '.join(reasons))
 
         accounts = Account.objects.filter(id__in=new_compliant_account_ids)
+        bar = progressbar.ProgressBar()
+        accounts = bar(accounts)
         for account in accounts:
             mark_account_as_compliant(account.id, reason='Requirements met again')
