@@ -191,19 +191,10 @@ class CreditCardAdmin(AppendOnlyModelAdmin):
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
         if 'expiry_month' in form.changed_data or 'expiry_year' in form.changed_data:
-            reasons = accounts.get_reasons_account_is_violating_delinquent_criteria(
-                obj.account.id
+            accounts.update_delinquent_status(
+                obj.account.id,
+                compliant_reason='Credit card turned valid again'
             )
-            if reasons:
-                accounts.mark_account_as_delinquent(
-                    obj.account.id,
-                    reason='. '.join(reasons)
-                )
-            else:
-                accounts.mark_account_as_compliant(
-                    obj.account.id,
-                    reason='Credit card turned valid again'
-                )
         super().save_model(request, obj, form, change)
 
 

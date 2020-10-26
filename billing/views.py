@@ -11,7 +11,7 @@ from rest_framework.viewsets import GenericViewSet
 
 from .actions.accounts import (
     assign_funds_to_account_pending_invoices,
-    charge_pending_invoices,
+    charge_pending_invoices, update_delinquent_status
 )
 from .models import Account, Charge, CreditCard, Invoice, ProductProperty, Transaction
 from .total import TotalIncludingZeroSerializer, TotalSerializer
@@ -43,6 +43,10 @@ class CreditCardUpdateSerializer(serializers.ModelSerializer):
         else:
             raise Exception('Unknown status')
         instance.save()
+        update_delinquent_status(
+            instance.account.id,
+            compliant_reason='Credit card turned valid again'
+        )
         return instance
 
 
