@@ -189,6 +189,7 @@ class CreditCardAdmin(AppendOnlyModelAdmin):
     readonly_fields = ['created', 'modified', 'expiry_date']
 
     def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
         if 'expiry_month' in form.changed_data or 'expiry_year' in form.changed_data:
             reasons = accounts.get_reasons_account_is_violating_delinquent_criteria(
                 obj.account.id
