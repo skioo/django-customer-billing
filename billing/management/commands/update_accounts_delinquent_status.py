@@ -25,6 +25,11 @@ class Command(BaseCommand):
             action='store_true',
             help='Shows accounts which delinquent status is going to change'
         )
+        parser.add_argument(
+            '--progress',
+            action='store_true',
+            help='Displays a progress bar'
+        )
 
     def handle(self, *args, **options):
         dry_run = options['dry_run']
@@ -44,14 +49,18 @@ class Command(BaseCommand):
             return
 
         accounts = Account.objects.filter(id__in=new_delinquent_account_ids)
-        bar = progressbar.ProgressBar()
-        accounts = bar(accounts)
+        if options['progress']:
+            bar = progressbar.ProgressBar()
+            accounts = bar(accounts)
+
         for account in accounts:
             reasons = get_reasons_account_is_violating_delinquent_criteria(account.id)
             mark_account_as_delinquent(account.id, reason='. '.join(reasons))
 
         accounts = Account.objects.filter(id__in=new_compliant_account_ids)
-        bar = progressbar.ProgressBar()
-        accounts = bar(accounts)
+        if options['progress']:
+            bar = progressbar.ProgressBar()
+            accounts = bar(accounts)
+
         for account in accounts:
             mark_account_as_compliant(account.id, reason='Requirements met again')
