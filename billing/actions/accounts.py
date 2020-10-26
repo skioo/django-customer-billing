@@ -283,14 +283,6 @@ def mark_account_as_compliant(account_id: UUID, reason: str):
         )
 
 
-def update_delinquent_status(account_id: UUID, compliant_reason: str):
-    reasons = get_reasons_account_is_violating_delinquent_criteria(account_id)
-    if reasons:
-        mark_account_as_delinquent(account_id, reason='. '.join(reasons))
-    else:
-        mark_account_as_compliant(account_id, reason=compliant_reason)
-
-
 def charge_pending_invoices(account_id: UUID) -> Dict[str, int]:
     account = Account.objects.get(id=account_id)
     pending_invoices = account.invoices.payable().only('pk')
