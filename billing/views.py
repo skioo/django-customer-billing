@@ -14,6 +14,7 @@ from .actions.accounts import (
     charge_pending_invoices,
 )
 from .models import Account, Charge, CreditCard, Invoice, ProductProperty, Transaction
+from .signals import debt_paid
 from .total import TotalIncludingZeroSerializer, TotalSerializer
 
 
@@ -154,4 +155,9 @@ def pay_open_invoices_with_registered_credit_cards(request):
     summary = charge_pending_invoices(account_id=account.id)
     account.refresh_from_db()
     success = not account.delinquent
+    if success:
+        debt_paid.send(
+            sender=pay_open_invoices_with_registered_credit_cards,
+            account=account
+        )
     return Response({'success': success, 'summary': summary}, status=HTTP_200_OK)
