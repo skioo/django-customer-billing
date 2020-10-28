@@ -523,6 +523,29 @@ class InvoiceInline(admin.TabularInline):
     ordering = ['-created']
 
 
+@admin.register(EventLog)
+class EventLogAdmin(admin.ModelAdmin):
+    date_hierarchy = 'created'
+    list_display = ('created', 'type', 'text', link_to_account)
+    ordering = ('-created',)
+    list_display_links = None
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related('account')
+
+    def has_add_permission(self, request):
+        return False
+
+
+class EventLogInline(admin.TabularInline):
+    model = EventLog
+    readonly_fields = ('created', 'type', 'text')
+    show_change_link = False
+    can_delete = False
+    extra = 0
+    ordering = ('-created',)
+
+
 ##############################################################
 # Accounts
 
@@ -639,7 +662,13 @@ class AccountAdmin(AppendOnlyModelAdmin):
     readonly_fields = ['balance', 'created', 'modified', create_invoices_button,
                        assign_funds_to_pending_invoices_button]
 
-    inlines = [CreditCardInline, ChargeInline, InvoiceInline, TransactionInline]
+    inlines = [
+        CreditCardInline,
+        ChargeInline,
+        InvoiceInline,
+        TransactionInline,
+        EventLogInline
+    ]
 
     def save_model(self, request, obj, form, change):
         if 'delinquent' in form.changed_data:
@@ -672,14 +701,3 @@ class AccountAdmin(AppendOnlyModelAdmin):
             .annotate(
             credit_card_count=Count('credit_cards'),
             valid_credit_card_count=Count('credit_cards', filter=Q(credit_cards__expiry_date__gte=date.today())))
-
-
-@admin.register(EventLog)
-class EventLogAdmin(admin.ModelAdmin):
-    date_hierarchy = 'created'
-    list_display = ('created', 'type', 'text', link_to_account)
-    search_fields = ('account__owner__email',)
-    ordering = ('-created',)
-
-    def get_queryset(self, request):
-        return super().get_queryset(request).prefetch_related('account')
