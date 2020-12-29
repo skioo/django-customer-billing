@@ -69,6 +69,13 @@ class Account(Model):
             transactions = transactions.filter(created__lte=as_of)
         return total_amount(transactions) - total_amount(charges)
 
+    def has_usable_credit_cards(self) -> bool:
+        credit_cards = CreditCard.objects.filter(
+            account=self,
+            status=CreditCard.ACTIVE
+        ).valid()
+        return credit_cards.exists()
+
     @transition(field=status, source=OPEN, target=CLOSED)
     def close(self):
         pass
