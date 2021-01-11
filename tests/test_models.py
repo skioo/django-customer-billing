@@ -416,14 +416,7 @@ class SolventAccountsTest(TestCase):
         }
 
     def test_account_is_not_solvent_when_has_not_cc_and_has_0_balance(self):
-        account_valid_cc_map = get_account_valid_credit_card_map([self.account.id])
-        account_enough_balance_map = get_account_enough_balance_map([self.account.id])
-
-        is_solvent = self.account.is_solvent(
-            account_valid_cc_map,
-            account_enough_balance_map,
-            self.currency_threshold_price_map
-        )
+        is_solvent = self.account.is_solvent(self.currency_threshold_price_map)
 
         assert is_solvent is False
 
@@ -437,14 +430,8 @@ class SolventAccountsTest(TestCase):
             expiry_year=date.today().year + 1,
             psp_object=psp_credit_card1
         )
-        account_valid_cc_map = get_account_valid_credit_card_map([self.account.id])
-        account_enough_balance_map = get_account_enough_balance_map([self.account.id])
 
-        is_solvent = self.account.is_solvent(
-            account_valid_cc_map,
-            account_enough_balance_map,
-            self.currency_threshold_price_map
-        )
+        is_solvent = self.account.is_solvent(self.currency_threshold_price_map)
 
         assert is_solvent is True
 
@@ -454,14 +441,8 @@ class SolventAccountsTest(TestCase):
             amount=Money(-10., 'CHF'),
             product_code='CREDIT'
         )
-        account_valid_cc_map = get_account_valid_credit_card_map([self.account.id])
-        account_enough_balance_map = get_account_enough_balance_map([self.account.id])
 
-        is_solvent = self.account.is_solvent(
-            account_valid_cc_map,
-            account_enough_balance_map,
-            self.currency_threshold_price_map
-        )
+        is_solvent = self.account.is_solvent(self.currency_threshold_price_map)
 
         assert is_solvent is True
 
@@ -480,13 +461,7 @@ class SolventAccountsTest(TestCase):
             amount=Money(-10., 'CHF'),
             product_code='CREDIT'
         )
-        account_valid_cc_map = get_account_valid_credit_card_map([self.account.id])
-        account_enough_balance_map = get_account_enough_balance_map([self.account.id])
 
-        is_solvent = self.account.is_solvent(
-            account_valid_cc_map,
-            account_enough_balance_map,
-            self.currency_threshold_price_map
-        )
+        is_solvent = self.account.is_solvent(self.currency_threshold_price_map)
 
         assert is_solvent is True

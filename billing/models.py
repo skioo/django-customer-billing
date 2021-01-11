@@ -61,9 +61,9 @@ class AccountQuerySet(models.QuerySet):
             billing_account.id
             for billing_account in self
             if billing_account.is_solvent(
+                currency_threshold_price_map,
                 account_valid_cc_map,
-                account_enough_balance_map,
-                currency_threshold_price_map
+                account_enough_balance_map
             )
         ]
         return Account.objects.filter(id__in=billing_account_ids)
@@ -111,10 +111,29 @@ class Account(Model):
 
     def is_solvent(
         self,
-        account_valid_cc_map: Dict[UUID, bool],
-        account_enough_balance_map: DefaultDict[UUID, DefaultDict[str, Decimal]],
-        currency_threshold_price_map: Dict[str, Decimal]
-    ) -> bool:
+        currency_threshold_price_map: Dict[str, Decimal],
+        account_valid_cc_map: Dict[UUID, bool] = None,
+        account_enough_balance_map: DefaultDict[UUID, DefaultDict[str, Decimal]] = None
+    ):
+        """
+        Given a map of currency thresholds determines if the account is solvent
+
+        account_valid_cc_map and account_enough_balance_map can be passed from
+        outside in order to improve the efficiency when we require to know if
+        several accounts are solvent
+        """
+        if not account_valid_cc_map:
+            from .actions.accounts import get_account_valid_credit_card_map
+            account_valid_cc_map = get_account_valid_credit_card_map(
+                Account.objects.filter(id=self.id)
+            )
+
+        if not account_enough_balance_map:
+            from .actions.accounts import get_account_enough_balance_map
+            account_enough_balance_map = get_account_enough_balance_map(
+                Account.objects.filter(id=self.id)
+            )
+
         return (
             account_valid_cc_map[self.id] or
             self.has_enough_balance(
