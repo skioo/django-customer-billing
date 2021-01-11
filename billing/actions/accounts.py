@@ -5,11 +5,14 @@ Also, the account is the aggregate root for invoices and charges,
 so the creation of those is managed here.
 
 """
+from collections import defaultdict
 from datetime import date
-from typing import Dict, List, Optional, Sequence, Tuple
+from decimal import Decimal
+from typing import DefaultDict, Dict, List, Optional, Sequence, Tuple
 from uuid import UUID
 
 from django.db import transaction
+from django.db.models import Count, Sum
 from moneyed import Money
 from structlog import get_logger
 
@@ -306,3 +309,54 @@ def charge_pending_invoices(account_id: UUID) -> Dict[str, int]:
         'num_paid_invoices': num_paid_invoices,
         'num_failed_invoices': len(pending_invoices) - num_paid_invoices
     }
+
+
+def get_account_valid_credit_card_map(
+    billing_account_ids: List[UUID]
+) -> DefaultDict[UUID, bool]:
+    """
+    Example of return
+    {
+        'd35759ec-53e9-11eb-ae93-0242ac130002': True,
+        'de97f8ac-53e9-11eb-ae93-0242ac130002': False
+        ...
+    }
+    True if the billing account has an active and valid credit card
+    """
+    acount_valid_cc_map = defaultdict(bool)
+    objs = CreditCard.objects.filter(
+        account_id__in=billing_account_ids,
+        status=CreditCard.ACTIVE
+    ).valid().values('account_id').annotate(n_valid_credit_cards=Count('id'))
+    for obj in objs:
+        acount_valid_cc_map[obj['account_id']] = bool(obj['n_valid_credit_cards'])
+    return acount_valid_cc_map
+
+
+def get_account_enough_balance_map(
+    billing_account_ids: List[UUID]
+) -> DefaultDict[UUID, DefaultDict[str, Decimal]]:
+    """
+    Example of return
+    {
+        'd35759ec-53e9-11eb-ae93-0242ac130002': {
+            'CHF': 10.,
+            'EUR': -20.,
+            'NOK': 0.
+        },
+        ...
+    }
+    """
+    account_charges_map = defaultdict(lambda: defaultdict(Decimal))
+
+    for obj in Transaction.successful.filter(
+            account_id__in=billing_account_ids
+    ).values('account_id', 'amount_currency').annotate(sum=Sum('amount')):
+        account_charges_map[obj['account_id']][obj['amount_currency']] += obj['sum']
+
+    for obj in Charge.objects.filter(
+            account_id__in=billing_account_ids
+    ).values('account_id', 'amount_currency').annotate(sum=Sum('amount')):
+        account_charges_map[obj['account_id']][obj['amount_currency']] -= obj['sum']
+
+    return account_charges_map
