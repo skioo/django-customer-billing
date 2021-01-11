@@ -409,21 +409,41 @@ class SolventAccountsTest(TestCase):
     def setUp(self):
         user = User.objects.create_user('a-username')
         self.account = Account.objects.create(owner=user, currency='CHF')
-
-    def test_account_is_not_solvent_when_has_not_cc_and_has_0_balance(self):
-        account_valid_cc_map = get_account_valid_credit_card_map([self.account.id])
-        account_enough_balance_map = get_account_enough_balance_map([self.account.id])
-        currency_threshold_price_map = {
+        self.currency_threshold_price_map = {
             'CHF': Decimal(10.),
             'EUR': Decimal(10.),
             'NOK': Decimal(10.)
         }
 
+    def test_account_is_not_solvent_when_has_not_cc_and_has_0_balance(self):
+        account_valid_cc_map = get_account_valid_credit_card_map([self.account.id])
+        account_enough_balance_map = get_account_enough_balance_map([self.account.id])
+
         is_solvent = self.account.is_solvent(
             account_valid_cc_map,
             account_enough_balance_map,
-            currency_threshold_price_map
+            self.currency_threshold_price_map
         )
 
         assert is_solvent is False
 
+    def test_account_is_solvent_when_has_a_valid_cc(self):
+        psp_credit_card1 = MyPSPCreditCard.objects.create(token='atoken1')
+        CreditCard.objects.create(
+            account=self.account,
+            type='VIS',
+            number='1111',
+            expiry_month=1,
+            expiry_year=date.today().year + 1,
+            psp_object=psp_credit_card1
+        )
+        account_valid_cc_map = get_account_valid_credit_card_map([self.account.id])
+        account_enough_balance_map = get_account_enough_balance_map([self.account.id])
+
+        is_solvent = self.account.is_solvent(
+            account_valid_cc_map,
+            account_enough_balance_map,
+            self.currency_threshold_price_map
+        )
+
+        assert is_solvent is True
