@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from decimal import Decimal
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -13,6 +14,10 @@ from billing.models import Account, Charge, CreditCard, Invoice, Transaction, Pr
     total_amount
 from billing.total import Total
 from .models import MyPSPCreditCard, MyPSPPayment
+from billing.actions.accounts import(
+    get_account_enough_balance_map,
+    get_account_valid_credit_card_map
+)
 
 
 class InvoiceTest(TestCase):
@@ -398,3 +403,27 @@ class ProductPropertyTest(TestCase):
     def test_property_value_can_be_empty(self):
         p = ProductProperty.objects.create(charge=self.charge, name='remark', value='')
         p.full_clean()
+
+
+class SolventAccountsTest(TestCase):
+    def setUp(self):
+        user = User.objects.create_user('a-username')
+        self.account = Account.objects.create(owner=user, currency='CHF')
+
+    def test_account_is_not_solvent_when_has_not_cc_and_has_0_balance(self):
+        account_valid_cc_map = get_account_valid_credit_card_map([self.account.id])
+        account_enough_balance_map = get_account_enough_balance_map([self.account.id])
+        currency_threshold_price_map = {
+            'CHF': Decimal(10.),
+            'EUR': Decimal(10.),
+            'NOK': Decimal(10.)
+        }
+
+        is_solvent = self.account.is_solvent(
+            account_valid_cc_map,
+            account_enough_balance_map,
+            currency_threshold_price_map
+        )
+
+        assert is_solvent is False
+
