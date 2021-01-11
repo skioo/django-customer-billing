@@ -406,9 +406,9 @@ class SolventAccountsTest(TestCase):
         user = User.objects.create_user('a-username')
         self.account = Account.objects.create(owner=user, currency='CHF')
         self.currency_threshold_price_map = {
-            'CHF': Decimal(10.),
+            'CHF': Decimal(10.83),
             'EUR': Decimal(10.),
-            'NOK': Decimal(10.)
+            'NOK': Decimal(103.97)
         }
 
     def test_account_is_not_solvent_when_has_not_cc_and_has_0_balance(self):
@@ -431,10 +431,26 @@ class SolventAccountsTest(TestCase):
 
         assert is_solvent is True
 
+    def test_account_is_insolvent_when_has_a_invalid_cc_and_has_0_balance(self):
+        psp_credit_card1 = MyPSPCreditCard.objects.create(token='atoken1')
+        CreditCard.objects.create(
+            account=self.account,
+            type='VIS',
+            number='1111',
+            expiry_month=1,
+            expiry_year=date.today().year + 1,
+            psp_object=psp_credit_card1,
+            status=CreditCard.INACTIVE
+        )
+
+        is_solvent = self.account.is_solvent(self.currency_threshold_price_map)
+
+        assert is_solvent is False
+
     def test_account_is_solvent_when_has_not_cc_and_enough_balance(self):
         Charge.objects.create(
             account=self.account,
-            amount=Money(-10., 'CHF'),
+            amount=Money(-10.84, 'CHF'),
             product_code='CREDIT'
         )
 

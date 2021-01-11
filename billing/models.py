@@ -122,6 +122,15 @@ class Account(Model):
             * Has a valid and active credit card to pay OR
             * Has enough balance to pay
 
+        In currency_threshold_price_map param you have to specify the amount threshold
+        for each currency. If the account has enough of one of the currencies then
+        is solvent. Ex:
+        currency_threshold_price_map {
+            'CHF': Decimal(10.83),
+            'EUR': Decimal(10.),
+            'NOK': Decimal(103.97)
+        }
+
         Note: account_valid_cc_map and account_enough_balance_map can be passed from
               outside in order to improve the efficiency when we require to know if
               several accounts are solvent
