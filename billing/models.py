@@ -57,7 +57,7 @@ class AccountQuerySet(models.QuerySet):
         )
         account_valid_cc_map = get_account_valid_credit_card_map(self)
         account_enough_balance_map = get_account_enough_balance_map(self)
-        billing_account_ids = [
+        solvent_billing_account_ids = [
             billing_account.id
             for billing_account in self
             if billing_account.is_solvent(
@@ -66,11 +66,11 @@ class AccountQuerySet(models.QuerySet):
                 account_enough_balance_map
             )
         ]
-        return Account.objects.filter(id__in=billing_account_ids)
+        return self.filter(id__in=solvent_billing_account_ids)
 
     def insolvent(self, currency_threshold_price_map: Dict[str, Decimal]):
         solvent_billing_accounts = self.solvent(currency_threshold_price_map)
-        return Account.objects.exclude(id__in=solvent_billing_accounts.values('id'))
+        return self.exclude(id__in=solvent_billing_accounts.values('id'))
 
 
 class Account(Model):
