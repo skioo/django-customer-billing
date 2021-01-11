@@ -2,6 +2,9 @@ import calendar
 import re
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
+from typing import DefaultDict, Dict
+from uuid import UUID
 
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -35,13 +38,39 @@ class AccountQuerySet(models.QuerySet):
         return self.filter(status=Account.OPEN)
 
     def with_uninvoiced_positive_charges(self):
-        return self.filter(charges__deleted=False, charges__amount__gt=0, charges__invoice__isnull=True).distinct()
+        return self.filter(
+            charges__deleted=False,
+            charges__amount__gt=0,
+            charges__invoice__isnull=True
+        ).distinct()
 
     def with_no_charges_since(self, dt: datetime):
         return self.exclude(charges__created__gte=dt)
 
     def with_pending_invoices(self):
         return self.filter(invoices__status=Invoice.PENDING).distinct()
+
+    def solvent(self, currency_threshold_price_map: Dict[str, Decimal]):
+        from .actions.accounts import (
+            get_account_enough_balance_map,
+            get_account_valid_credit_card_map
+        )
+        account_valid_cc_map = get_account_valid_credit_card_map(self)
+        account_enough_balance_map = get_account_enough_balance_map(self)
+        solvent_billing_account_ids = [
+            billing_account.id
+            for billing_account in self
+            if billing_account.is_solvent(
+                currency_threshold_price_map,
+                account_valid_cc_map,
+                account_enough_balance_map
+            )
+        ]
+        return self.filter(id__in=solvent_billing_account_ids)
+
+    def insolvent(self, currency_threshold_price_map: Dict[str, Decimal]):
+        solvent_billing_accounts = self.solvent(currency_threshold_price_map)
+        return self.exclude(id__in=solvent_billing_accounts.values('id'))
 
 
 class Account(Model):
@@ -61,20 +90,8 @@ class Account(Model):
 
     objects = AccountQuerySet.as_manager()
 
-    def balance(self, as_of: date = None):
-        charges = Charge.objects.filter(account=self)
-        transactions = Transaction.successful.filter(account=self)
-        if as_of is not None:
-            charges = charges.filter(created__lte=as_of)
-            transactions = transactions.filter(created__lte=as_of)
-        return total_amount(transactions) - total_amount(charges)
-
-    def has_usable_credit_cards(self) -> bool:
-        credit_cards = CreditCard.objects.filter(
-            account=self,
-            status=CreditCard.ACTIVE
-        ).valid()
-        return credit_cards.exists()
+    def __str__(self):
+        return str(self.owner)
 
     @transition(field=status, source=OPEN, target=CLOSED)
     def close(self):
@@ -84,8 +101,76 @@ class Account(Model):
     def reopen(self):
         pass
 
-    def __str__(self):
-        return str(self.owner)
+    def balance(self, as_of: date = None):
+        charges = Charge.objects.filter(account=self)
+        transactions = Transaction.successful.filter(account=self)
+        if as_of is not None:
+            charges = charges.filter(created__lte=as_of)
+            transactions = transactions.filter(created__lte=as_of)
+        return total_amount(transactions) - total_amount(charges)
+
+    def is_solvent(
+        self,
+        currency_threshold_price_map: Dict[str, Decimal],
+        account_valid_cc_map: Dict[UUID, bool] = None,
+        account_enough_balance_map: DefaultDict[UUID, DefaultDict[str, Decimal]] = None
+    ):
+        """
+        Given a map of currency thresholds determines if the account is solvent
+
+        An account is solvent when:
+            * Has a valid and active credit card to pay OR
+            * Has enough balance to pay
+
+        In currency_threshold_price_map param you have to specify the amount threshold
+        for each currency. If the account has enough of one of the currencies then
+        is solvent. Ex:
+        currency_threshold_price_map {
+            'CHF': Decimal(10.83),
+            'EUR': Decimal(10.),
+            'NOK': Decimal(103.97)
+        }
+
+        Note: account_valid_cc_map and account_enough_balance_map can be passed from
+              outside in order to improve the efficiency when we require to know if
+              several accounts are solvent
+        """
+        if not account_valid_cc_map:
+            from .actions.accounts import get_account_valid_credit_card_map
+            account_valid_cc_map = get_account_valid_credit_card_map(
+                Account.objects.filter(id=self.id)
+            )
+
+        if not account_enough_balance_map:
+            from .actions.accounts import get_account_enough_balance_map
+            account_enough_balance_map = get_account_enough_balance_map(
+                Account.objects.filter(id=self.id)
+            )
+
+        return (
+            account_valid_cc_map[self.id] or
+            self.has_enough_balance(
+                account_enough_balance_map,
+                currency_threshold_price_map
+            )
+        )
+
+    def has_enough_balance(
+        self,
+        account_enough_balance_map: DefaultDict[UUID, DefaultDict[str, Decimal]],
+        currency_threshold_price_map: Dict[str, Decimal]
+    ) -> bool:
+        for currency, balance in account_enough_balance_map[self.id].items():
+            if balance >= currency_threshold_price_map[currency]:
+                return True
+        return False
+
+    def has_usable_credit_cards(self) -> bool:
+        credit_cards = CreditCard.objects.filter(
+            account=self,
+            status=CreditCard.ACTIVE
+        ).valid()
+        return credit_cards.exists()
 
 
 ########################################################################################################
