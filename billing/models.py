@@ -118,9 +118,13 @@ class Account(Model):
         """
         Given a map of currency thresholds determines if the account is solvent
 
-        account_valid_cc_map and account_enough_balance_map can be passed from
-        outside in order to improve the efficiency when we require to know if
-        several accounts are solvent
+        An account is solvent when:
+            * Has a valid and active credit card to pay OR
+            * Has enough balance to pay
+
+        Note: account_valid_cc_map and account_enough_balance_map can be passed from
+              outside in order to improve the efficiency when we require to know if
+              several accounts are solvent
         """
         if not account_valid_cc_map:
             from .actions.accounts import get_account_valid_credit_card_map
