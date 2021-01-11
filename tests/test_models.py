@@ -14,10 +14,6 @@ from billing.models import Account, Charge, CreditCard, Invoice, Transaction, Pr
     total_amount
 from billing.total import Total
 from .models import MyPSPCreditCard, MyPSPPayment
-from billing.actions.accounts import(
-    get_account_enough_balance_map,
-    get_account_valid_credit_card_map
-)
 
 
 class InvoiceTest(TestCase):
