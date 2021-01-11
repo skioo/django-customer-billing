@@ -18,10 +18,6 @@ from django_fsm import FSMField, can_proceed, transition
 from djmoney.models.fields import CurrencyField, MoneyField
 from moneyed import Money
 
-from .actions.accounts import (
-    get_account_enough_balance_map,
-    get_account_valid_credit_card_map
-)
 from .total import Total
 
 
@@ -55,6 +51,10 @@ class AccountQuerySet(models.QuerySet):
         return self.filter(invoices__status=Invoice.PENDING).distinct()
 
     def solvent(self, currency_threshold_price_map: Dict[str, Decimal]):
+        from .actions.accounts import (
+            get_account_enough_balance_map,
+            get_account_valid_credit_card_map
+        )
         account_valid_cc_map = get_account_valid_credit_card_map(self)
         account_enough_balance_map = get_account_enough_balance_map(self)
         billing_account_ids = [
@@ -69,18 +69,8 @@ class AccountQuerySet(models.QuerySet):
         return Account.objects.filter(id__in=billing_account_ids)
 
     def insolvent(self, currency_threshold_price_map: Dict[str, Decimal]):
-        account_valid_cc_map = get_account_valid_credit_card_map(self)
-        account_enough_balance_map = get_account_enough_balance_map(self)
-        billing_account_ids = [
-            billing_account.id
-            for billing_account in self
-            if not billing_account.is_solvent(
-                account_valid_cc_map,
-                account_enough_balance_map,
-                currency_threshold_price_map
-            )
-        ]
-        return Account.objects.filter(id__in=billing_account_ids)
+        solvent_billing_accounts = self.solvent(currency_threshold_price_map)
+        return Account.objects.exclude(id__in=solvent_billing_accounts.values('id'))
 
 
 class Account(Model):

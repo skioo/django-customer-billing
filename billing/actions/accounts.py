@@ -347,7 +347,7 @@ def get_account_enough_balance_map(
         ...
     }
     """
-    account_charges_map = defaultdict(lambda: defaultdict(Decimal))
+    account_charges_map = defaultdict(lambda: defaultdict(Decimal))  # type: DefaultDict
 
     for obj in Transaction.successful.filter(
             account_id__in=billing_account_ids
