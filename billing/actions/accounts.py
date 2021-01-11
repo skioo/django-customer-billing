@@ -315,7 +315,7 @@ def get_account_valid_credit_card_map(
     billing_account_ids: List[UUID]
 ) -> DefaultDict[UUID, bool]:
     """
-    Returns a map with a boolean which is True if the account has an active and valid
+    Returns a map with a boolean which indicates if the account has an active and valid
     credit card with which to pay
     {
         '<account_id_1>': True,
@@ -337,7 +337,7 @@ def get_account_enough_balance_map(
     billing_account_ids: List[UUID]
 ) -> DefaultDict[UUID, DefaultDict[str, Decimal]]:
     """
-    Returns a map with the currency balances of each account
+    Returns a map with the currency balances for each account
     {
         '<account_id_1>': {
             'CHF': 10.,
@@ -355,7 +355,7 @@ def get_account_enough_balance_map(
         account_charges_map[obj['account_id']][obj['amount_currency']] += obj['sum']
 
     for obj in Charge.objects.filter(
-            account_id__in=billing_account_ids
+        account_id__in=billing_account_ids
     ).values('account_id', 'amount_currency').annotate(sum=Sum('amount')):
         account_charges_map[obj['account_id']][obj['amount_currency']] -= obj['sum']
 
