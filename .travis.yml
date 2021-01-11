@@ -32,4 +32,5 @@ jobs:
           tags: true
 
 after_success:
+  - bash <(curl -s https://codecov.io/bash) -Z -c -f .coverage
   - coveralls
