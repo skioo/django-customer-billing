@@ -129,7 +129,7 @@ class Account(Model):
         currency_threshold_price_map: Dict[str, Decimal]
     ) -> bool:
         for currency, balance in account_enough_balance_map[self.id].items():
-            if balance > currency_threshold_price_map[currency]:
+            if balance >= currency_threshold_price_map[currency]:
                 return True
         return False
 
