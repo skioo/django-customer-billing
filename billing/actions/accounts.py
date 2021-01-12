@@ -333,7 +333,7 @@ def get_account_valid_credit_card_map(
     return acount_valid_cc_map
 
 
-def get_account_enough_balance_map(
+def get_account_balance_map(
     billing_account_ids: List[UUID]
 ) -> DefaultDict[UUID, DefaultDict[str, Decimal]]:
     """
