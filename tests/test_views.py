@@ -10,7 +10,7 @@ from rest_framework.test import APIClient
 class AccountViewTest(TestCase):
     fixtures = ['tests/sample-data']
 
-    def test_it_should_retrieve_user111s_account(self):
+    def test_it_should_retrieve_users_account(self):
         user111 = User.objects.get(id=111)
         client = APIClient()
         client.force_authenticate(user111)
@@ -72,7 +72,7 @@ class AccountViewTest(TestCase):
                     'due': []
                 }
             ],
-            'delinquent': False,
+            'delinquent': True,
         }
 
     def test_it_should_retrieve_charge_product_attributes(self):

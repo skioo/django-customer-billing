@@ -86,7 +86,9 @@ class Account(Model):
     owner = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='billing_account', on_delete=PROTECT)
     currency = CurrencyField(db_index=True)
     status = FSMField(max_length=20, choices=STATUS_CHOICES, default=OPEN, db_index=True)
-    delinquent = models.BooleanField(default=False, db_index=True)
+    # An account is marked as delinquent when it is registered then when the user
+    # registers a valid credit card it will be marked as compliant
+    delinquent = models.BooleanField(default=True, db_index=True)
 
     objects = AccountQuerySet.as_manager()
 

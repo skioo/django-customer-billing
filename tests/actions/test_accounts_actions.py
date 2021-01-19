@@ -17,6 +17,8 @@ class AccountActionsTest(TestCase):
     def setUp(self):
         user = User.objects.create_user('a-username')
         self.account = Account.objects.create(owner=user, currency='CHF')
+        self.account.delinquent = False
+        self.account.save()
         expiry_date = date.today() + timedelta(days=365)
         self.credit_card = CreditCard.objects.create(
             account=self.account,
