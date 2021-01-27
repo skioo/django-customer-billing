@@ -529,6 +529,7 @@ class EventLogAdmin(admin.ModelAdmin):
     list_display = ('created', 'type', 'text', link_to_account)
     ordering = ('-created',)
     list_display_links = None
+    list_filter = ('type',)
 
     def get_queryset(self, request):
         return super().get_queryset(request).prefetch_related('account')
