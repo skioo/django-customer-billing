@@ -517,10 +517,10 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
     @transaction.atomic
     def save_model(self, request, obj, form, change):
         if 'status' in form.changed_data:
-            self.manage_update_status_consequences(obj, request)
+            self.manage_update_status(obj, request)
         super().save_model(request, obj, form, change)
 
-    def manage_update_status_consequences(self, invoice: Invoice, request: HttpRequest):
+    def manage_update_status(self, invoice: Invoice, request: HttpRequest):
         previous_status = Invoice.objects.get(id=invoice.id).status
         new_status = invoice.status
 
