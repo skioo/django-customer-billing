@@ -540,7 +540,7 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
                 request,
                 messages.WARNING,
                 'Cancellation consequences have not been managed automatically because '
-                'invoice is partially paid'
+                'invoice is partially paid. Manage them manually.'
             )
             return
 
@@ -549,7 +549,7 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
                 request,
                 messages.WARNING,
                 'Cancellation consequences have not been managed automatically because '
-                'invoice already has reverse charges'
+                'invoice already has reverse charges. Manage them manually.'
             )
             return
 
@@ -558,7 +558,7 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
                 request,
                 messages.WARNING,
                 'Cancellation consequences have not been managed automatically because '
-                'invoice has negative charges'
+                'invoice has negative charges. Manage them manually.'
             )
             return
 
@@ -579,17 +579,38 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
         )
 
     @staticmethod
-    def manage_invoice_reverse_cancellation(invoice: Invoice):
+    def manage_invoice_reverse_cancellation(invoice: Invoice, request: HttpRequest):
         reverse_charges = Charge.objects.filter(invoice=invoice, reverses__isnull=False)
         no_reverse_charges = Charge.objects.filter(
             invoice=invoice,
             reverses__isnull=True
         )
-        if (
-            not invoice.is_partially_paid()
-            and reverse_charges.count() == no_reverse_charges.count()
-        ):
-            reverse_charges.delete()
+
+        if invoice.is_partially_paid():
+            messages.add_message(
+                request,
+                messages.WARNING,
+                'Reverse cancellation consequences have not been managed automatically '
+                'because invoice is partially paid. Manage them manually.'
+            )
+            return
+
+        if reverse_charges.count() != no_reverse_charges.count():
+            messages.add_message(
+                request,
+                messages.WARNING,
+                'Reverse cancellation consequences have not been managed automatically '
+                'because invoice reverse and no reverse charges are not the same number'
+                '. Manage them manually.'
+            )
+            return
+
+        reverse_charges.delete()
+        messages.add_message(
+            request,
+            messages.SUCCESS,
+            'Reverse cancellation consequences managed automatically'
+        )
 
 
 class InvoiceInline(admin.TabularInline):
