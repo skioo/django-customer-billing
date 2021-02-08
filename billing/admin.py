@@ -513,6 +513,13 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
         ]
         return custom_urls + super().get_urls()
 
+    def save_model(self, request, obj, form, change):
+        if change and 'status' in form.changed_data:
+            print('***************')
+            print(change)
+            print(form.changed_data)
+        super().save_model(request, obj, form, change)
+
 
 class InvoiceInline(admin.TabularInline):
     model = Invoice
