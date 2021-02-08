@@ -1,10 +1,11 @@
 from datetime import date, datetime
+
 from django import forms
 from django.conf.urls import url
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.db import transaction
 from django.db.models import Count, Max, Prefetch, Q
-from django.http import HttpResponseRedirect
+from django.http import HttpRequest, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import NoReverseMatch, reverse
 from django.utils.html import format_html, format_html_join
@@ -531,24 +532,55 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
             self.manage_invoice_reverse_cancellation_consequences(invoice)
 
     @staticmethod
-    def manage_invoice_cancellation_consequences(invoice: Invoice):
+    def manage_invoice_cancellation_consequences(
+        invoice: Invoice,
+        request: HttpRequest
+    ):
         reverse_charges = Charge.objects.filter(invoice=invoice, reverses__isnull=False)
         negative_charges = Charge.objects.filter(invoice=invoice, amount__lte=0)
-        if (
-            not invoice.is_partially_paid()
-            and not reverse_charges
-            and not negative_charges
-        ):
-            charges = Charge.objects.filter(invoice=invoice)
-            for charge in charges:
-                Charge.objects.create(
-                    account=charge.account,
-                    invoice=invoice,
-                    amount=-charge.amount,
-                    reverses=charge,
-                    ad_hoc_label=charge.ad_hoc_label,
-                    product_code=charge.product_code
-                )
+
+        if invoice.is_partially_paid():
+            messages.add_message(
+                request,
+                messages.WARNING,
+                'Cancellation consequences have not been managed automatically because '
+                'invoice is partially paid'
+            )
+            return
+
+        if reverse_charges:
+            messages.add_message(
+                request,
+                messages.WARNING,
+                'Cancellation consequences have not been managed automatically because '
+                'invoice already has reverse charges'
+            )
+            return
+
+        if negative_charges:
+            messages.add_message(
+                request,
+                messages.WARNING,
+                'Cancellation consequences have not been managed automatically because '
+                'invoice has negative charges'
+            )
+            return
+
+        charges = Charge.objects.filter(invoice=invoice)
+        for charge in charges:
+            Charge.objects.create(
+                account=charge.account,
+                invoice=invoice,
+                amount=-charge.amount,
+                reverses=charge,
+                ad_hoc_label=charge.ad_hoc_label,
+                product_code=charge.product_code
+            )
+        messages.add_message(
+            request,
+            messages.SUCCESS,
+            'Cancellation consequences managed automatically'
+        )
 
     @staticmethod
     def manage_invoice_reverse_cancellation_consequences(invoice: Invoice):
