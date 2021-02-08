@@ -530,11 +530,39 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
                 previous_status == Invoice.CANCELLED and new_status == Invoice.PENDING
             )
 
-            if from_pending_to_cancelled and not obj.is_partially_paid():
-                print('111111111111111111111111')
+            if from_pending_to_cancelled:
+                reverse_charges = Charge.objects.filter(
+                    invoice=obj,
+                    reverses__isnull=False
+                )
+                negative_charges = Charge.objects.filter(
+                    invoice=obj,
+                    amount__amount__lte=0
+                )
 
-            if from_cancelled_to_pending and not obj.is_partially_paid():
+                if not obj.is_partially_paid() and not reverse_charges and not negative_charges:
+                    charges = Charge.objects.filter(invoice=obj)
+                    for charge in charges:
+                        Charge.objects.create(
+                            account=charge.account,
+                            invoice=obj,
+                            amount=-charge.amount,
+                            reverses=charge
+                        )
+
+            if from_cancelled_to_pending:
                 print('222222222222222222222222')
+                reverse_charges = Charge.objects.filter(
+                    invoice=obj,
+                    reverses__isnull=False
+                )
+                no_reverse_charges = Charge.objects.filter(
+                    invoice=obj,
+                    reverses__isnull=True
+                )
+
+                if not obj.is_partially_paid() and reverse_charges.count() == no_reverse_charges.count():
+                    reverse_charges.delete()
 
         super().save_model(request, obj, form, change)
 
