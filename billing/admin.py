@@ -515,9 +515,11 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
 
     def save_model(self, request, obj, form, change):
         if change and 'status' in form.changed_data:
+            previous_status = Invoice.objects.get(id=obj.id).status
+            new_status = obj.status
             print('***************')
-            print(change)
-            print(form.changed_data)
+            print(f'previous_status={previous_status}')
+            print(f'new_status={new_status}')
         super().save_model(request, obj, form, change)
 
 
