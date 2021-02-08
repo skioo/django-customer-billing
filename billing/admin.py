@@ -537,7 +537,7 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
                 )
                 negative_charges = Charge.objects.filter(
                     invoice=obj,
-                    amount__amount__lte=0
+                    amount__lte=0
                 )
 
                 if not obj.is_partially_paid() and not reverse_charges and not negative_charges:
