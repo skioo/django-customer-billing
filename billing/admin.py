@@ -547,7 +547,9 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
                             account=charge.account,
                             invoice=obj,
                             amount=-charge.amount,
-                            reverses=charge
+                            reverses=charge,
+                            ad_hoc_label=charge.ad_hoc_label,
+                            product_code=charge.product_code
                         )
 
             if from_cancelled_to_pending:
