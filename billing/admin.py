@@ -517,25 +517,21 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
     @transaction.atomic
     def save_model(self, request, obj, form, change):
         if 'status' in form.changed_data:
-            self.manage_update_status_consequences(obj)
+            self.manage_update_status_consequences(obj, request)
         super().save_model(request, obj, form, change)
 
-    @staticmethod
-    def manage_update_status_consequences(self, invoice: Invoice):
+    def manage_update_status_consequences(self, invoice: Invoice, request: HttpRequest):
         previous_status = Invoice.objects.get(id=invoice.id).status
         new_status = invoice.status
 
         if previous_status == Invoice.PENDING and new_status == Invoice.CANCELLED:
-            self.manage_invoice_cancellation_consequences(invoice)
+            self.manage_invoice_cancellation(invoice, request)
 
         if previous_status == Invoice.CANCELLED and new_status == Invoice.PENDING:
-            self.manage_invoice_reverse_cancellation_consequences(invoice)
+            self.manage_invoice_reverse_cancellation(invoice)
 
     @staticmethod
-    def manage_invoice_cancellation_consequences(
-        invoice: Invoice,
-        request: HttpRequest
-    ):
+    def manage_invoice_cancellation(invoice: Invoice, request: HttpRequest):
         reverse_charges = Charge.objects.filter(invoice=invoice, reverses__isnull=False)
         negative_charges = Charge.objects.filter(invoice=invoice, amount__lte=0)
 
@@ -583,7 +579,7 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
         )
 
     @staticmethod
-    def manage_invoice_reverse_cancellation_consequences(invoice: Invoice):
+    def manage_invoice_reverse_cancellation(invoice: Invoice):
         reverse_charges = Charge.objects.filter(invoice=invoice, reverses__isnull=False)
         no_reverse_charges = Charge.objects.filter(
             invoice=invoice,
