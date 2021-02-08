@@ -528,7 +528,7 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
             self.manage_invoice_cancellation(invoice, request)
 
         if previous_status == Invoice.CANCELLED and new_status == Invoice.PENDING:
-            self.manage_invoice_reverse_cancellation(invoice)
+            self.manage_invoice_reverse_cancellation(invoice, request)
 
     @staticmethod
     def manage_invoice_cancellation(invoice: Invoice, request: HttpRequest):
