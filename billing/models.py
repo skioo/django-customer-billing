@@ -229,6 +229,9 @@ class Invoice(Model):
         invoice_transactions = Transaction.successful.filter(invoice=self)
         return total_amount(invoice_charges) - total_amount(invoice_transactions)
 
+    def is_partially_paid(self) -> bool:
+        return Transaction.successful.filter(invoice=self).exists()
+
     def __str__(self):
         return '#{}'.format(self.id)
 

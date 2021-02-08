@@ -1,9 +1,8 @@
 from datetime import date, datetime
-from typing import Dict
-
 from django import forms
 from django.conf.urls import url
 from django.contrib import admin
+from django.db import transaction
 from django.db.models import Count, Max, Prefetch, Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
@@ -16,6 +15,7 @@ from import_export.fields import Field
 from import_export.formats import base_formats
 from moneyed.localization import format_money
 from structlog import get_logger
+from typing import Dict
 
 from .actions import accounts, invoices
 from .models import (
@@ -513,6 +513,7 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
         ]
         return custom_urls + super().get_urls()
 
+    @transaction.atomic
     def save_model(self, request, obj, form, change):
         if change and 'status' in form.changed_data:
             previous_status = Invoice.objects.get(id=obj.id).status
@@ -520,6 +521,21 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
             print('***************')
             print(f'previous_status={previous_status}')
             print(f'new_status={new_status}')
+            print(f'is_partially_paid={obj.is_partially_paid()}')
+
+            from_pending_to_cancelled = (
+                previous_status == Invoice.PENDING and new_status == Invoice.CANCELLED
+            )
+            from_cancelled_to_pending = (
+                previous_status == Invoice.CANCELLED and new_status == Invoice.PENDING
+            )
+
+            if from_pending_to_cancelled and not obj.is_partially_paid():
+                print('111111111111111111111111')
+
+            if from_cancelled_to_pending and not obj.is_partially_paid():
+                print('222222222222222222222222')
+
         super().save_model(request, obj, form, change)
 
 
