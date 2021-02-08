@@ -515,58 +515,53 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
 
     @transaction.atomic
     def save_model(self, request, obj, form, change):
-        if change and 'status' in form.changed_data:
-            previous_status = Invoice.objects.get(id=obj.id).status
-            new_status = obj.status
-            print('***************')
-            print(f'previous_status={previous_status}')
-            print(f'new_status={new_status}')
-            print(f'is_partially_paid={obj.is_partially_paid()}')
-
-            from_pending_to_cancelled = (
-                previous_status == Invoice.PENDING and new_status == Invoice.CANCELLED
-            )
-            from_cancelled_to_pending = (
-                previous_status == Invoice.CANCELLED and new_status == Invoice.PENDING
-            )
-
-            if from_pending_to_cancelled:
-                reverse_charges = Charge.objects.filter(
-                    invoice=obj,
-                    reverses__isnull=False
-                )
-                negative_charges = Charge.objects.filter(
-                    invoice=obj,
-                    amount__lte=0
-                )
-
-                if not obj.is_partially_paid() and not reverse_charges and not negative_charges:
-                    charges = Charge.objects.filter(invoice=obj)
-                    for charge in charges:
-                        Charge.objects.create(
-                            account=charge.account,
-                            invoice=obj,
-                            amount=-charge.amount,
-                            reverses=charge,
-                            ad_hoc_label=charge.ad_hoc_label,
-                            product_code=charge.product_code
-                        )
-
-            if from_cancelled_to_pending:
-                print('222222222222222222222222')
-                reverse_charges = Charge.objects.filter(
-                    invoice=obj,
-                    reverses__isnull=False
-                )
-                no_reverse_charges = Charge.objects.filter(
-                    invoice=obj,
-                    reverses__isnull=True
-                )
-
-                if not obj.is_partially_paid() and reverse_charges.count() == no_reverse_charges.count():
-                    reverse_charges.delete()
-
+        if 'status' in form.changed_data:
+            self.manage_update_status_consequences(obj)
         super().save_model(request, obj, form, change)
+
+    @staticmethod
+    def manage_update_status_consequences(self, invoice: Invoice):
+        previous_status = Invoice.objects.get(id=invoice.id).status
+        new_status = invoice.status
+
+        if previous_status == Invoice.PENDING and new_status == Invoice.CANCELLED:
+            self.manage_invoice_cancellation_consequences(invoice)
+
+        if previous_status == Invoice.CANCELLED and new_status == Invoice.PENDING:
+            self.manage_invoice_reverse_cancellation_consequences(invoice)
+
+    @staticmethod
+    def manage_invoice_cancellation_consequences(invoice: Invoice):
+        reverse_charges = Charge.objects.filter(invoice=invoice, reverses__isnull=False)
+        negative_charges = Charge.objects.filter(invoice=invoice, amount__lte=0)
+        if (
+            not invoice.is_partially_paid()
+            and not reverse_charges
+            and not negative_charges
+        ):
+            charges = Charge.objects.filter(invoice=invoice)
+            for charge in charges:
+                Charge.objects.create(
+                    account=charge.account,
+                    invoice=invoice,
+                    amount=-charge.amount,
+                    reverses=charge,
+                    ad_hoc_label=charge.ad_hoc_label,
+                    product_code=charge.product_code
+                )
+
+    @staticmethod
+    def manage_invoice_reverse_cancellation_consequences(invoice: Invoice):
+        reverse_charges = Charge.objects.filter(invoice=invoice, reverses__isnull=False)
+        no_reverse_charges = Charge.objects.filter(
+            invoice=invoice,
+            reverses__isnull=True
+        )
+        if (
+            not invoice.is_partially_paid()
+            and reverse_charges.count() == no_reverse_charges.count()
+        ):
+            reverse_charges.delete()
 
 
 class InvoiceInline(admin.TabularInline):
