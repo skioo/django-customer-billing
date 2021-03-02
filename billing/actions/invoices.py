@@ -53,7 +53,7 @@ def pay_with_account_credit_cards(
         #
         valid_credit_cards = CreditCard.objects.valid().filter(account=invoice.account)
         if exclude_reka_ccs:
-            valid_credit_cards = valid_credit_cards.exclude(payment_method='REK')
+            valid_credit_cards = valid_credit_cards.exclude(type='REK')
         valid_credit_cards = valid_credit_cards.order_by('status')
         if not valid_credit_cards:
             raise PreconditionError('No valid credit card on account.')
