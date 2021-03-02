@@ -13,13 +13,17 @@ class PreconditionError(Exception):
     pass
 
 
-def pay_with_account_credit_cards(invoice_id) -> Optional[Transaction]:
+def pay_with_account_credit_cards(
+    invoice_id,
+    exclude_reka_ccs=False
+) -> Optional[Transaction]:
     """
     Get paid for the invoice, trying the valid credit cards on record for the account.
 
     If successful attaches the payment to the invoice and marks the invoice as paid.
 
     :param invoice_id: the id of the invoice to pay.
+    :param exclude_reka_ccs: Temporal param to exclude reka credit cards
     :return: A successful transaction, or None if we weren't able to pay the invoice.
     """
     logger.debug('invoice-payment-started', invoice_id=invoice_id)
@@ -47,7 +51,10 @@ def pay_with_account_credit_cards(invoice_id) -> Optional[Transaction]:
         #
         # Try valid credit cards until one works. Start with the active ones
         #
-        valid_credit_cards = CreditCard.objects.valid().filter(account=invoice.account).order_by('status')
+        valid_credit_cards = CreditCard.objects.valid().filter(account=invoice.account)
+        if exclude_reka_ccs:
+            valid_credit_cards = valid_credit_cards.exclude(payment_method='REK')
+        valid_credit_cards = valid_credit_cards.order_by('status')
         if not valid_credit_cards:
             raise PreconditionError('No valid credit card on account.')
 
