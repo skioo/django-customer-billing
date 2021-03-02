@@ -1,12 +1,12 @@
 import logging
+from collections import defaultdict
 
 import progressbar
 import structlog
-from collections import defaultdict
 from django.core.management.base import BaseCommand
 
 from ...actions.invoices import pay_with_account_credit_cards
-from ...models import Invoice, CreditCard
+from ...models import CreditCard, Invoice
 
 
 def set_debug(logger_name):
@@ -23,10 +23,24 @@ class Command(BaseCommand):
               Pass v2 to see sql queries"""
 
     def add_arguments(self, parser):
-        parser.add_argument('--dry-run', action='store_true', dest='dry_run',
-                            help="Displays the payable invoices but doesn't perform any action.")
-        parser.add_argument('--progress', action='store_true', dest='progress',
-                            help='Displays a progress bar')
+        parser.add_argument(
+            '--dry-run',
+            action='store_true',
+            dest='dry_run',
+            help="Displays the payable invoices but doesn't perform any action."
+        )
+        parser.add_argument(
+            '--progress',
+            action='store_true',
+            dest='progress',
+            help='Displays a progress bar'
+        )
+        parser.add_argument(
+            '--exclude-reka-ccs',
+            action='store_true',
+            dest='exclude_reka_ccs',
+            help='Temporal option to exclude reka credit cards'
+        )
 
     def handle(self, *args, **options):
         if options['verbosity'] >= 2:
@@ -36,14 +50,26 @@ class Command(BaseCommand):
 
         all_payable_invoices = Invoice.objects.payable()
 
-        logger.debug('pay-invoice-select', dry_run=dry_run, payable=len(all_payable_invoices))
+        logger.debug(
+            'pay-invoice-select',
+            dry_run=dry_run,
+            payable=len(all_payable_invoices)
+        )
 
         # Should replace by a filter, to run in a single sql query
         invoices = [
-            i for i in all_payable_invoices if CreditCard.objects.valid().filter(account_id=i.account_id).exists()
+            invoice
+            for invoice in all_payable_invoices
+            if CreditCard.objects.valid().filter(account_id=invoice.account_id).exists()
         ]
 
-        logger.info('pay-invoices-start', dry_run=dry_run, payable_with_valid_cc=len(invoices))
+        exclude_reka_ccs = options['exclude_reka_ccs']
+        logger.info(
+            'pay-invoices-start',
+            dry_run=dry_run,
+            payable_with_valid_cc=len(invoices),
+            exclude_reka_ccs=exclude_reka_ccs,
+        )
 
         if dry_run:
             return
@@ -56,7 +82,10 @@ class Command(BaseCommand):
             stats = defaultdict(lambda: 0)
             for invoice in invoices:
                 try:
-                    maybe_transaction = pay_with_account_credit_cards(invoice.pk)
+                    maybe_transaction = pay_with_account_credit_cards(
+                        invoice.pk,
+                        options['exclude_reka_ccs']
+                    )
                     if maybe_transaction is not None:
                         stats['success'] += 1
                     else:
