@@ -532,9 +532,6 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
 
     @staticmethod
     def manage_invoice_cancellation(invoice: Invoice, request: HttpRequest):
-        reverse_charges = Charge.objects.filter(invoice=invoice, reverses__isnull=False)
-        negative_charges = Charge.objects.filter(invoice=invoice, amount__lte=0)
-
         if invoice.is_partially_paid():
             messages.add_message(
                 request,
@@ -544,6 +541,11 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
             )
             return
 
+        charges = Charge.objects.filter(invoice=invoice)
+        reverse_charges = list(filter(
+            lambda c: c is not None,
+            charges.values_list('reversed_by', flat=True)
+        ))
         if reverse_charges:
             messages.add_message(
                 request,
@@ -553,6 +555,7 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
             )
             return
 
+        negative_charges = Charge.objects.filter(invoice=invoice, amount__lte=0)
         if negative_charges:
             messages.add_message(
                 request,
@@ -563,15 +566,28 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
             return
 
         charges = Charge.objects.filter(invoice=invoice)
-        for charge in charges:
-            Charge.objects.create(
-                account=charge.account,
-                invoice=invoice,
-                amount=-charge.amount,
-                reverses=charge,
-                ad_hoc_label=charge.ad_hoc_label,
-                product_code=charge.product_code
+        try:
+            Charge.objects.bulk_create([
+                Charge(
+                    account=charge.account,
+                    invoice=invoice,
+                    amount=-charge.amount,
+                    reverses=charge,
+                    ad_hoc_label=charge.ad_hoc_label,
+                    product_code=charge.product_code
+                )
+                for charge in charges
+            ])
+        except Exception as e:
+            messages.add_message(
+                request,
+                messages.WARNING,
+                'Cancellation consequences have not been managed automatically because '
+                f'a problem found creating the reversal charges {e}. Manage them '
+                'manually.'
             )
+            return
+
         messages.add_message(
             request,
             messages.SUCCESS,
