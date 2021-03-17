@@ -566,15 +566,28 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
             return
 
         charges = Charge.objects.filter(invoice=invoice)
-        for charge in charges:
-            Charge.objects.create(
-                account=charge.account,
-                invoice=invoice,
-                amount=-charge.amount,
-                reverses=charge,
-                ad_hoc_label=charge.ad_hoc_label,
-                product_code=charge.product_code
+        try:
+            Charge.objects.bulk_create([
+                Charge(
+                    account=charge.account,
+                    invoice=invoice,
+                    amount=-charge.amount,
+                    reverses=charge,
+                    ad_hoc_label=charge.ad_hoc_label,
+                    product_code=charge.product_code
+                )
+                for charge in charges
+            ])
+        except Exception as e:
+            messages.add_message(
+                request,
+                messages.WARNING,
+                'Cancellation consequences have not been managed automatically because '
+                f'a problem found creating the reversal charges {e}. Manage them '
+                'manually.'
             )
+            return
+
         messages.add_message(
             request,
             messages.SUCCESS,
