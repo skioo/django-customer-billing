@@ -532,9 +532,6 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
 
     @staticmethod
     def manage_invoice_cancellation(invoice: Invoice, request: HttpRequest):
-        reverse_charges = Charge.objects.filter(invoice=invoice, reverses__isnull=False)
-        negative_charges = Charge.objects.filter(invoice=invoice, amount__lte=0)
-
         if invoice.is_partially_paid():
             messages.add_message(
                 request,
@@ -544,6 +541,11 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
             )
             return
 
+        charges = Charge.objects.filter(invoice=invoice)
+        reverse_charges = list(filter(
+            lambda c: c is not None,
+            charges.values_list('reversed_by', flat=True)
+        ))
         if reverse_charges:
             messages.add_message(
                 request,
@@ -553,6 +555,7 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
             )
             return
 
+        negative_charges = Charge.objects.filter(invoice=invoice, amount__lte=0)
         if negative_charges:
             messages.add_message(
                 request,
