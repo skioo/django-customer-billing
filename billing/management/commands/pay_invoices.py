@@ -35,12 +35,6 @@ class Command(BaseCommand):
             dest='progress',
             help='Displays a progress bar'
         )
-        parser.add_argument(
-            '--exclude-reka-ccs',
-            action='store_true',
-            dest='exclude_reka_ccs',
-            help='Temporal option to exclude reka credit cards'
-        )
 
     def handle(self, *args, **options):
         if options['verbosity'] >= 2:
@@ -63,12 +57,10 @@ class Command(BaseCommand):
             if CreditCard.objects.valid().filter(account_id=invoice.account_id).exists()
         ]
 
-        exclude_reka_ccs = options['exclude_reka_ccs']
         logger.info(
             'pay-invoices-start',
             dry_run=dry_run,
-            payable_with_valid_cc=len(invoices),
-            exclude_reka_ccs=exclude_reka_ccs,
+            payable_with_valid_cc=len(invoices)
         )
 
         if dry_run:
@@ -82,10 +74,7 @@ class Command(BaseCommand):
             stats = defaultdict(lambda: 0)
             for invoice in invoices:
                 try:
-                    maybe_transaction = pay_with_account_credit_cards(
-                        invoice.pk,
-                        options['exclude_reka_ccs']
-                    )
+                    maybe_transaction = pay_with_account_credit_cards(invoice.pk)
                     if maybe_transaction is not None:
                         stats['success'] += 1
                     else:
