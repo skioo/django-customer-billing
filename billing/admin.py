@@ -1,7 +1,7 @@
 from datetime import date, datetime
 
 from django import forms
-from django.conf.urls import url
+from django.urls import re_path
 from django.contrib import admin, messages
 from django.db import transaction
 from django.db.models import Count, Max, Prefetch, Q
@@ -505,12 +505,12 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
 
     def get_urls(self):
         custom_urls = [
-            url(r'^(?P<invoice_id>[0-9a-f-]+)/assign_funds_to_invoice/$',
-                self.admin_site.admin_view(do_assign_funds_to_invoice),
-                name='billing-assign-funds-to-invoice'),
-            url(r'^(?P<invoice_id>[0-9a-f-]+)/pay/$',
-                self.admin_site.admin_view(do_pay_invoice_with_cc),
-                name='billing-pay-invoice-with-cc')
+            re_path(r'^(?P<invoice_id>[0-9a-f-]+)/assign_funds_to_invoice/$',
+                    self.admin_site.admin_view(do_assign_funds_to_invoice),
+                    name='billing-assign-funds-to-invoice'),
+            re_path(r'^(?P<invoice_id>[0-9a-f-]+)/pay/$',
+                    self.admin_site.admin_view(do_pay_invoice_with_cc),
+                    name='billing-pay-invoice-with-cc')
         ]
         return custom_urls + super().get_urls()
 
@@ -797,11 +797,12 @@ class AccountAdmin(AppendOnlyModelAdmin):
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
-            url(
+            re_path(
                 r'^(?P<account_id>[0-9a-f-]+)/create_invoices/$',
                 self.admin_site.admin_view(create_invoices_form),
                 name='billing-create-invoices'
-            ), url(
+            ),
+            re_path(
                 r'^(?P<account_id>[0-9a-f-]+)/assign_funds_to_pending_invoices/$',
                 self.admin_site.admin_view(do_assign_funds_to_pending_invoices),
                 name='billing-assign-funds-to-pending-invoices'

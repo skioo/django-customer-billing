@@ -53,6 +53,19 @@ class InvoicesActionsTest(TestCase):
         with raises(invoices.PreconditionError, match='No valid credit card on account\\.'):
             invoices.pay_with_account_credit_cards(invoice.pk)
 
+    def test_it_should_not_attempt_payment_when_closed_account(self):
+        user = User.objects.create_user('a-username')
+        account = Account.objects.create(owner=user, currency='CHF', status=Account.CLOSED)
+        psp_credit_card = MyPSPCreditCard.objects.create(token='atoken')
+        CreditCard.objects.create(account=account, type='VIS',
+                                  number='1111', expiry_month=12, expiry_year=30,
+                                  psp_object=psp_credit_card)
+        invoice = Invoice.objects.create(account=account, due_date=date.today())
+        Charge.objects.create(account=account, invoice=invoice, amount=Money(10, 'CHF'), product_code='ACHARGE')
+
+        with raises(invoices.PreconditionError, match=f'Cannot pay invoice with closed account {account}.'):
+            invoices.pay_with_account_credit_cards(invoice.pk)
+
     def test_it_should_pay_when_all_is_right(self):
         user = User.objects.create_user('a-username')
         account = Account.objects.create(owner=user, currency='CHF')
