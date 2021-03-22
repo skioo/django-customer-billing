@@ -35,7 +35,7 @@ class Command(BaseCommand):
         dry_run = options['dry_run']
         logger.info('update-accounts-delinquent-status', dry_run=dry_run)
 
-        account_ids = Account.objects.values_list('id', flat=True)
+        account_ids = Account.objects.open().values_list('id', flat=True)
         new_delinquent_account_ids, new_compliant_account_ids = (
             get_accounts_which_delinquent_status_has_to_change(account_ids)
         )
