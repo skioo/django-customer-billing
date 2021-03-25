@@ -4,7 +4,7 @@ from django.db import transaction
 from structlog import get_logger
 
 from .. import psp
-from ..models import CreditCard, Invoice, Transaction
+from ..models import CreditCard, Invoice, Transaction, Account
 
 logger = get_logger()
 
@@ -25,6 +25,14 @@ def pay_with_account_credit_cards(invoice_id) -> Optional[Transaction]:
     logger.debug('invoice-payment-started', invoice_id=invoice_id)
     with transaction.atomic():
         invoice = Invoice.objects.select_for_update().get(pk=invoice_id)
+
+        #
+        # Precondition: Account has to be open
+        #
+        if invoice.account.status == Account.CLOSED:
+            raise PreconditionError(
+                f'Cannot pay invoice with closed account {invoice.account}.'
+            )
 
         #
         # Precondition: Invoice should be in a state that allows payment
