@@ -1,7 +1,7 @@
-from django.conf.urls import include, url
 from django.contrib import admin
+from django.urls import include, path
 
 urlpatterns = [
-    url(r'^billing/', include('billing.urls')),
-    url(r'^admin/', admin.site.urls),
+    path(r'billing/', include('billing.urls')),
+    path(r'admin/', admin.site.urls),
 ]
