@@ -137,7 +137,7 @@ class TotalSerializer(serializers.BaseSerializer):
         # We cannot use djmoney.contrib.django_rest_framework.MoneyField because a total is not a field.
         # So we replicate the output.
         return [{'amount': TotalSerializer.amount_serializer.to_representation(money.amount),
-                 'amount_currency': money.currency.code} for money in obj.nonzero_monies()]
+                 'amount_currency': money.currency.code} for money in obj.monies()]
 
 
 class TotalIncludingZeroSerializer(serializers.BaseSerializer):
