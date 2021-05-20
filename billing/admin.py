@@ -1,13 +1,13 @@
 from datetime import date, datetime
+from typing import Dict
 
 from django import forms
-from django.urls import re_path
 from django.contrib import admin, messages
 from django.db import transaction
 from django.db.models import Count, Max, Prefetch, Q
 from django.http import HttpRequest, HttpResponseRedirect
 from django.shortcuts import render
-from django.urls import NoReverseMatch, reverse
+from django.urls import NoReverseMatch, re_path, reverse
 from django.utils.html import format_html, format_html_join
 from django.utils.translation import gettext_lazy as _
 from import_export import resources
@@ -16,7 +16,6 @@ from import_export.fields import Field
 from import_export.formats import base_formats
 from moneyed.localization import format_money
 from structlog import get_logger
-from typing import Dict
 
 from .actions import accounts, invoices
 from .models import (
@@ -505,10 +504,10 @@ class InvoiceAdmin(ExportMixin, AppendOnlyModelAdmin):
 
     def get_urls(self):
         custom_urls = [
-            re_path(r'^(?P<invoice_id>[0-9a-f-]+)/assign_funds_to_invoice/$',
+            re_path(r'(?P<invoice_id>[0-9a-f-]+)/assign_funds_to_invoice/',
                     self.admin_site.admin_view(do_assign_funds_to_invoice),
                     name='billing-assign-funds-to-invoice'),
-            re_path(r'^(?P<invoice_id>[0-9a-f-]+)/pay/$',
+            re_path(r'(?P<invoice_id>[0-9a-f-]+)/pay/',
                     self.admin_site.admin_view(do_pay_invoice_with_cc),
                     name='billing-pay-invoice-with-cc')
         ]
@@ -798,12 +797,12 @@ class AccountAdmin(AppendOnlyModelAdmin):
         urls = super().get_urls()
         my_urls = [
             re_path(
-                r'^(?P<account_id>[0-9a-f-]+)/create_invoices/$',
+                r'(?P<account_id>[0-9a-f-]+)/create_invoices/',
                 self.admin_site.admin_view(create_invoices_form),
                 name='billing-create-invoices'
             ),
             re_path(
-                r'^(?P<account_id>[0-9a-f-]+)/assign_funds_to_pending_invoices/$',
+                r'(?P<account_id>[0-9a-f-]+)/assign_funds_to_pending_invoices/',
                 self.admin_site.admin_view(do_assign_funds_to_pending_invoices),
                 name='billing-assign-funds-to-pending-invoices'
             )

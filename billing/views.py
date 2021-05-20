@@ -116,7 +116,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
 ########################################################################################################
 
 class AccountSerializer(serializers.ModelSerializer):
-    balance = TotalSerializer(read_only=True)
+    balance = TotalIncludingZeroSerializer(read_only=True)
     credit_cards = CreditCardSerializer(read_only=True, many=True)
     charges = ChargeSerializer(read_only=True, many=True)
     invoices = InvoiceSerializer(read_only=True, many=True)
