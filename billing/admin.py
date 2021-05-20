@@ -203,11 +203,6 @@ class CreditCardInline(admin.TabularInline):
     extra = 0
     ordering = ['-created']
 
-    def delete_model(self, request, obj):
-        account = obj.account
-        super().delete_model(request, obj)
-        credit_card_deleted.send(sender=CreditCardAdmin, account=account)
-
 
 ##############################################################
 # Charges
