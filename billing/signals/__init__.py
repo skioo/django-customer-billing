@@ -6,5 +6,9 @@ from django.dispatch import Signal
 invoice_ready = Signal(use_caching=True)
 
 credit_card_registered = Signal()
+credit_card_deleted = Signal()
 
 debt_paid = Signal()
+
+new_delinquent_account = Signal()
+new_compliant_account = Signal()
