@@ -108,3 +108,35 @@ class InvoicesActionsTest(TestCase):
         assert payment
         assert payment.success
         assert payment.credit_card_number == '2222'
+
+    def test_it_should_return_ok_when_all_invoices_are_ok(self):
+        user = User.objects.create_user('a-username')
+        account = Account.objects.create(owner=user, currency='CHF')
+        Invoice.objects.create(
+            account=account,
+            due_date=date.today(),
+            status=Invoice.PENDING
+        )
+
+        all_ok = invoices.audit_closed_invoices()
+
+        assert all_ok is True
+
+    def test_it_should_return_not_ok_when_a_invoice_is_not_ok(self):
+        user = User.objects.create_user('a-username')
+        account = Account.objects.create(owner=user, currency='CHF')
+        invoice = Invoice.objects.create(
+            account=account,
+            due_date=date.today(),
+            status=Invoice.CANCELLED
+        )
+        Charge.objects.create(
+            account=account,
+            invoice=invoice,
+            amount=Money(-10, 'CHF'),
+            product_code='ACHARGE'
+        )
+
+        all_ok = invoices.audit_closed_invoices()
+
+        assert all_ok is False
