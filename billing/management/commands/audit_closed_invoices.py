@@ -36,3 +36,7 @@ class Command(BaseCommand):
             due_value = due_monies[0]
             if due_value.amount != 0:
                 logger.info('non-zero-due', invoice_id=invoice.id, status=invoice.status, due=due_value)
+
+        if len(invoices) == 0:
+            return True
+        return False
