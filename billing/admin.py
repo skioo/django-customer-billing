@@ -22,6 +22,7 @@ from .models import (
     Account, Charge, CreditCard, EventLog, Invoice, ProductProperty,
     Transaction,
 )
+from .signals import credit_card_deleted
 
 logger = get_logger()
 
@@ -187,6 +188,11 @@ class CreditCardAdmin(AppendOnlyModelAdmin):
 
     raw_id_fields = ['account']
     readonly_fields = ['created', 'modified', 'expiry_date']
+
+    def delete_model(self, request, obj):
+        account = obj.account
+        super().delete_model(request, obj)
+        credit_card_deleted.send(sender=CreditCardAdmin, account=account)
 
 
 class CreditCardInline(admin.TabularInline):
