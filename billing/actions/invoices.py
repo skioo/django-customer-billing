@@ -4,7 +4,7 @@ from django.db import transaction
 from structlog import get_logger
 
 from .. import psp
-from ..models import CreditCard, Invoice, Transaction, Account
+from ..models import Account, CreditCard, Invoice, Transaction
 
 logger = get_logger()
 
@@ -84,3 +84,35 @@ def pay_with_account_credit_cards(invoice_id) -> Optional[Transaction]:
             except Exception as e:
                 logger.error('invoice-payment-error', invoice_id=invoice_id, credit_card=credit_card, exc_info=e)
         return None
+
+
+def audit_closed_invoices() -> bool:
+    invoices = Invoice.objects.exclude(status=Invoice.PENDING)
+    logger.debug('audit-closed-invoices', non_pending_invoice_count=len(invoices))
+    all_ok = True
+
+    for invoice in invoices:
+        due_total = invoice.due()
+        due_monies = due_total.monies()
+
+        if len(due_monies) != 1:
+            logger.info(
+                'wrong-number-of-currencies',
+                invoice_id=invoice.id,
+                status=invoice.status,
+                currency_count=len(due_monies)
+            )
+            all_ok = False
+            continue
+
+        due_value = due_monies[0]
+        if due_value.amount != 0:
+            logger.info(
+                'non-zero-due',
+                invoice_id=invoice.id,
+                status=invoice.status,
+                due=due_value
+            )
+            all_ok = False
+
+    return all_ok
